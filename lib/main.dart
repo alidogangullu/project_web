@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 
 void main() {
 
-  String path = Uri.base.path.toString();
-  path = path.substring(1);
-
-  runApp(MyApp(title: path,));
-
+  String url = Uri.base.toString();
+  String? para1 = Uri.base.queryParameters["para1"];
+  String? para2 = Uri.base.queryParameters["para2"];
+  if(para1!=null && para2!=null) {
+    runApp(MyApp(para1: para1, para2: para2,));
+  } else {
+    runApp(const MyApp(para1: "para1", para2: "para2",));
+  }
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.title});
-  final String title;
+  const MyApp({super.key, required this.para1, required this.para2});
+  final String para1, para2;
 
   @override
   Widget build(BuildContext context) {
@@ -21,15 +24,16 @@ class MyApp extends StatelessWidget {
 
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: title,),
+      home: MyHomePage(para1: para1, para2: para2,),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  const MyHomePage({super.key, required this.para1, required this.para2});
 
-  final String title;
+  final String para1;
+  final String para2;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -40,17 +44,17 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text(widget.para1+widget.para2),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              'Restaurant: ${widget.title.split("/").first}',
+              'Restaurant: ${widget.para1}',
             ),
             Text(
-              'Table No: ${widget.title.split("/").last}',
+              'Table No: ${widget.para2}',
             ),
           ],
         ),
