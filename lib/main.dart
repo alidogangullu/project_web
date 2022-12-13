@@ -15,7 +15,7 @@ Future<void> main() async {
   if(para1!=null && para2!=null) {
     runApp(MyApp(para1: para1, para2: para2,));
   } else {
-    runApp(const MyApp(para1: "para1", para2: "para2",));
+    runApp(const MyApp(para1: "abc", para2: "para2",));
   }
 }
 
