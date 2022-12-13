@@ -30,7 +30,7 @@ class MenuScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => CategoryItemsList(
-                          collection: "Restaurants/$para1/MenuCategory",
+                          restaurantPath: "Restaurants/$para1",
                           selectedCategory: document['name'],
                           table: para2,
                         ),
@@ -56,12 +56,12 @@ class MenuScreen extends StatelessWidget {
 class CategoryItemsList extends StatefulWidget {
   const CategoryItemsList(
       {Key? key,
-      required this.collection,
+      required this.restaurantPath,
       required this.selectedCategory,
       required this.table})
       : super(key: key);
 
-  final String collection;
+  final String restaurantPath;
   final String selectedCategory;
   final String table;
 
@@ -72,14 +72,17 @@ class CategoryItemsList extends StatefulWidget {
 class _CategoryItemsListState extends State<CategoryItemsList> {
   late List<dynamic> orders = [];
 
-  void placeOrder() {
-    // TODO send orders to firebase
+  Future<void> placeOrder() async {
+    var document = FirebaseFirestore.instance.collection("${widget.restaurantPath}/Orders").doc(widget.table);
+    await document.set({
+      'OrderList': orders
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(title: Text(widget.selectedCategory),),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showDialog(
@@ -112,7 +115,10 @@ class _CategoryItemsListState extends State<CategoryItemsList> {
               ),
               actions: [
                 TextButton(
-                  onPressed: placeOrder,
+                  onPressed: () {
+                    placeOrder();
+                    Navigator.pop(context);
+                  },
                   child: const Text("Place the Order"),
                 )
               ],
@@ -124,7 +130,7 @@ class _CategoryItemsListState extends State<CategoryItemsList> {
       body: StreamBuilder(
           stream: FirebaseFirestore.instance
               .collection(
-                  '${widget.collection}/${widget.selectedCategory}/list')
+                  '${widget.restaurantPath}/MenuCategory/${widget.selectedCategory}/list')
               .orderBy('name', descending: true)
               .snapshots(),
           builder:

@@ -6,7 +6,7 @@ import 'firebase_options.dart';
 Future<void> main() async {
 
   //String url = Uri.base.toString();
-  //?para1=abc&para2=1
+  //url path format = /?para1="restaurantName"&para2="tableNo"
   String? para1 = Uri.base.queryParameters["para1"];
   String? para2 = Uri.base.queryParameters["para2"];
   await Firebase.initializeApp(
@@ -15,7 +15,7 @@ Future<void> main() async {
   if(para1!=null && para2!=null) {
     runApp(MyApp(para1: para1, para2: para2,));
   } else {
-    runApp(const MyApp(para1: "abc", para2: "para2",));
+    runApp(const MyApp(para1: "abc", para2: "1",));
   }
 }
 
