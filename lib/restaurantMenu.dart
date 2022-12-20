@@ -73,8 +73,8 @@ class _CategoryItemsListState extends State<CategoryItemsList> {
   late List<dynamic> orders = [];
 
   Future<void> placeOrder() async {
-    var document = FirebaseFirestore.instance.collection("${widget.restaurantPath}/Orders").doc(widget.table);
-    await document.set({
+    var document = FirebaseFirestore.instance.collection("${widget.restaurantPath}/Tables").doc(widget.table);
+    await document.update({
       'OrderList': orders
     });
   }
