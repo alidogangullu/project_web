@@ -4,33 +4,42 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
-
   //String url = Uri.base.toString();
-  //url path format = /?para1="restaurantName"&para2="tableNo"
-  String? para1 = Uri.base.queryParameters["para1"];
-  String? para2 = Uri.base.queryParameters["para2"];
+  //url path format = /?id="restaurantID"&tableNo="tableNo"
+  //https://restaurantapp-2a43d.web.app/?id=w2I2nZ1laB7xN0HF7m2R&tableNo=1
+  String? id = Uri.base.queryParameters["id"];
+  String? tableNo = Uri.base.queryParameters["tableNo"];
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  if(para1!=null && para2!=null) {
-    runApp(MyApp(para1: para1, para2: para2,));
+  if (id != null && tableNo != null) {
+    runApp(MyApp(
+      id: id,
+      tableNo: tableNo,
+    ));
   } else {
-    runApp(const MyApp(para1: "abc", para2: "1",));
+    //error case
+    runApp(const MyApp(
+      id: "",
+      tableNo: "",
+    ));
   }
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.para1, required this.para2});
-  final String para1, para2;
+  const MyApp({super.key, required this.id, required this.tableNo});
+  final String id, tableNo;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: para1,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MenuScreen(para1: para1, para2: para2,),
+      home: MenuScreen(
+        id: id,
+        tableNo: tableNo,
+      ),
     );
   }
 }

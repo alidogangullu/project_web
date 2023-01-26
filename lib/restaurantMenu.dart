@@ -2,20 +2,22 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class MenuScreen extends StatelessWidget {
-  const MenuScreen({super.key, required this.para1, required this.para2});
+  const MenuScreen({super.key, required this.id, required this.tableNo});
 
-  final String para1;
-  final String para2;
+  final String id;
+  final String tableNo;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(para1),
+        title: RestaurantNameText(
+          id: id,
+        ),
       ),
       body: StreamBuilder(
         stream: FirebaseFirestore.instance
-            .collection("Restaurants/$para1/MenuCategory")
+            .collection("Restaurants/$id/MenuCategory")
             .orderBy("name", descending: true)
             .snapshots(),
         builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -30,9 +32,9 @@ class MenuScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => CategoryItemsList(
-                          restaurantPath: "Restaurants/$para1",
+                          restaurantPath: "Restaurants/$id",
                           selectedCategory: document['name'],
-                          table: para2,
+                          table: tableNo,
                         ),
                       ),
                     );
@@ -73,16 +75,18 @@ class _CategoryItemsListState extends State<CategoryItemsList> {
   late List<dynamic> orders = [];
 
   Future<void> placeOrder() async {
-    var document = FirebaseFirestore.instance.collection("${widget.restaurantPath}/Tables").doc(widget.table);
-    await document.update({
-      'OrderList': orders
-    });
+    var document = FirebaseFirestore.instance
+        .collection("${widget.restaurantPath}/Tables")
+        .doc(widget.table);
+    await document.update({'OrderList': orders});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.selectedCategory),),
+      appBar: AppBar(
+        title: Text(widget.selectedCategory),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showDialog(
@@ -159,6 +163,27 @@ class _CategoryItemsListState extends State<CategoryItemsList> {
               );
             }
           }),
+    );
+  }
+}
+
+class RestaurantNameText extends StatelessWidget {
+  const RestaurantNameText({Key? key, required this.id}) : super(key: key);
+  final String id;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<DocumentSnapshot>(
+      future:
+          FirebaseFirestore.instance.collection("Restaurants").doc(id).get(),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return Text(snapshot.data!['name']);
+        } else if (snapshot.hasError) {
+          return Text("Error: ${snapshot.error}");
+        }
+        return CircularProgressIndicator();
+      },
     );
   }
 }
