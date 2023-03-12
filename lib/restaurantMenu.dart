@@ -26,6 +26,7 @@ class MenuScreen extends StatelessWidget {
           } else {
             return ListView(
               children: snapshot.data!.docs.map((document) {
+                //restorant menüsü kategorileri listeleme
                 return InkWell(
                   onTap: () {
                     Navigator.push(
@@ -92,6 +93,8 @@ class _CategoryItemsListState extends State<CategoryItemsList> {
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
+              //test için sipariş oluşturma ekranı
+              //todo daha iyisi
               title: const Text("Order List"),
               content: SizedBox(
                 width: 500,
@@ -144,6 +147,8 @@ class _CategoryItemsListState extends State<CategoryItemsList> {
             } else {
               return ListView(
                 children: snapshot.data!.docs.map((document) {
+                  //kategornin içindeki ürünleri listeme
+                  //todo fiyat, yorum, estimated tm vb diğer bilgiler
                   return Card(
                     child: ListTile(
                       leading: const Icon(Icons.emoji_food_beverage),
@@ -170,6 +175,8 @@ class _CategoryItemsListState extends State<CategoryItemsList> {
 class RestaurantNameText extends StatelessWidget {
   const RestaurantNameText({Key? key, required this.id}) : super(key: key);
   final String id;
+
+  //restorant id'sinden restorant ismini Text Widget olarak döndürme
 
   @override
   Widget build(BuildContext context) {

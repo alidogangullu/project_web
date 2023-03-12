@@ -4,9 +4,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
-  //String url = Uri.base.toString();
-  //url path format = /?id="restaurantID"&tableNo="tableNo"
-  //https://restaurantapp-2a43d.web.app/?id=w2I2nZ1laB7xN0HF7m2R&tableNo=1
+  //String url = Uri.base.toString(); //url yi çekmek için
+  //qr koddan gelen url path formatı = /?id="restaurantID"&tableNo="tableNo"
+  //örnek url https://restaurantapp-2a43d.web.app/?id=w2I2nZ1laB7xN0HF7m2R&tableNo=1
   String? id = Uri.base.queryParameters["id"];
   String? tableNo = Uri.base.queryParameters["tableNo"];
   await Firebase.initializeApp(
