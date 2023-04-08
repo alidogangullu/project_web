@@ -13,7 +13,8 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   if (id != null && tableNo != null) {
-    runApp(MyApp( //daha sonra id ve tableNo parametre olarak verilecek şuan test için ayarlandı.
+    runApp(MyApp(
+      //daha sonra id ve tableNo parametre olarak verilecek şuan test için ayarlandı.
       id: "vAkYpJA6Pd6UTEPDysvj",
       tableNo: "1",
     ));
@@ -33,6 +34,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
