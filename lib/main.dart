@@ -20,8 +20,8 @@ Future<void> main() async {
   } else {
     //error case
     runApp(const MyApp(
-      id: "",
-      tableNo: "",
+      id: "vAkYpJA6Pd6UTEPDysvj",
+      tableNo: "1",
     ));
   }
 }
