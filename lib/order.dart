@@ -142,8 +142,6 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                                   });
 
                                   setState(() {});
-                                } else {
-                                  //print("last one, cannot delete");
                                 }
                               },
                               icon: const Icon(
