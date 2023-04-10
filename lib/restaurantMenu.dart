@@ -1,15 +1,39 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'order.dart';
+
 class MenuScreen extends StatelessWidget {
   const MenuScreen({super.key, required this.id, required this.tableNo});
 
   final String id;
   final String tableNo;
 
+  //todo mobilde giren kullanıcılar id'leri ile databasede saklanıyor. masanın adisyon yönetimi
+  //todo bu id'ler ile sağlanıyor. webte user id olmadığı için özel bir çözüm üretilmeli
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OrdersPage(
+                ordersRef: FirebaseFirestore.instance
+                    .collection("Restaurants/${id}/Tables")
+                    .doc(tableNo)
+                    .collection("Orders"),
+                tableRef: FirebaseFirestore.instance
+                    .collection("Restaurants/${id}/Tables")
+                    .doc(tableNo),
+              ),
+            ),
+          );
+        },
+        child: const Icon(Icons.shopping_basket),
+      ),
       appBar: AppBar(
         title: RestaurantNameText(
           id: id,
@@ -56,12 +80,12 @@ class MenuScreen extends StatelessWidget {
   }
 }
 
-class CategoryItemsList extends StatefulWidget {
+class CategoryItemsList extends StatelessWidget {
   const CategoryItemsList(
       {Key? key,
-      required this.restaurantPath,
-      required this.selectedCategory,
-      required this.table})
+        required this.restaurantPath,
+        required this.selectedCategory,
+        required this.table})
       : super(key: key);
 
   final String restaurantPath;
@@ -69,66 +93,25 @@ class CategoryItemsList extends StatefulWidget {
   final String table;
 
   @override
-  State<CategoryItemsList> createState() => _CategoryItemsListState();
-}
-
-class _CategoryItemsListState extends State<CategoryItemsList> {
-  late List<dynamic> orders = [];
-
-  Future<void> placeOrder() async {
-    var document = FirebaseFirestore.instance
-        .collection("${widget.restaurantPath}/Tables")
-        .doc(widget.table);
-    await document.update({'OrderList': orders});
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.selectedCategory),
+        title: Text(selectedCategory),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              //test için sipariş oluşturma ekranı
-              //todo daha iyisi
-              title: const Text("Order List"),
-              content: SizedBox(
-                width: 500,
-                height: 500,
-                child: ListView.builder(
-                    itemCount: orders.length,
-                    itemBuilder: (context, index) {
-                      return Card(
-                        child: ListTile(
-                          title: Text(orders[index]),
-                          trailing: InkWell(
-                              onTap: () {
-                                setState(() {
-                                  orders.removeAt(index);
-                                });
-                                Navigator.pop(context);
-                              },
-                              child: const Icon(
-                                Icons.remove,
-                                color: Colors.red,
-                              )),
-                        ),
-                      );
-                    }),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OrdersPage(
+                tableRef: FirebaseFirestore.instance
+                    .collection("$restaurantPath/Tables")
+                    .doc(table),
+                ordersRef: FirebaseFirestore.instance
+                    .collection("$restaurantPath/Tables")
+                    .doc(table)
+                    .collection("Orders"),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    placeOrder();
-                    Navigator.pop(context);
-                  },
-                  child: const Text("Place the Order"),
-                )
-              ],
             ),
           );
         },
@@ -137,7 +120,7 @@ class _CategoryItemsListState extends State<CategoryItemsList> {
       body: StreamBuilder(
           stream: FirebaseFirestore.instance
               .collection(
-                  '${widget.restaurantPath}/MenuCategory/${widget.selectedCategory}/list')
+              '$restaurantPath/MenuCategory/$selectedCategory/list')
               .orderBy('name', descending: true)
               .snapshots(),
           builder:
@@ -148,7 +131,7 @@ class _CategoryItemsListState extends State<CategoryItemsList> {
               return ListView(
                 children: snapshot.data!.docs.map((document) {
                   //kategornin içindeki ürünleri listeme
-                  //todo fiyat, yorum, estimated tm vb diğer bilgiler
+                  //todo fiyat, yorum, estimated time vb diğer bilgiler
                   return Card(
                     child: ListTile(
                       leading: const Icon(Icons.emoji_food_beverage),
@@ -158,8 +141,32 @@ class _CategoryItemsListState extends State<CategoryItemsList> {
                           Icons.add,
                           color: Colors.green,
                         ),
-                        onPressed: () {
-                          orders.add(document['name']);
+                        onPressed: () async {
+                          final querySnapshot = await FirebaseFirestore.instance
+                              .collection("$restaurantPath/Tables")
+                              .doc(table)
+                              .collection("Orders")
+                              .where("itemRef", isEqualTo: document.reference)
+                              .get();
+                          if (querySnapshot.size > 0) {
+                            // Item already exists in order, update its quantity
+                            final orderDoc = querySnapshot.docs.first;
+                            final quantity = orderDoc["quantity_notSubmitted_notServiced"] + 1;
+                            orderDoc.reference.update({"quantity_notSubmitted_notServiced": quantity});
+                          } else {
+                            // Item doesn't exist in order, add it with quantity 1
+                            FirebaseFirestore.instance
+                                .collection("$restaurantPath/Tables")
+                                .doc(table)
+                                .collection("Orders")
+                                .doc()
+                                .set({
+                              "itemRef": document.reference,
+                              "quantity_notSubmitted_notServiced" : 1,
+                              "quantity_Submitted_notServiced" : 0,
+                              "quantity_Submitted_Serviced" : 0,
+                            });
+                          }
                         },
                       ),
                     ),
