@@ -1,16 +1,53 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-
+import 'dart:html' as html;
 import 'order.dart';
 
-class MenuScreen extends StatelessWidget {
+class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key, required this.id, required this.tableNo});
 
   final String id;
   final String tableNo;
 
-  //todo mobilde giren kullanıcılar id'leri ile databasede saklanıyor. masanın adisyon yönetimi
-  //todo bu id'ler ile sağlanıyor. webte user id olmadığı için özel bir çözüm üretilmeli
+  @override
+  State<MenuScreen> createState() => _MenuScreenState();
+}
+
+class _MenuScreenState extends State<MenuScreen> {
+
+  //todo ilk giren kullanıcıya yeni girişleri yönetmek için yetki verip security sağlama
+
+  String getUniqueId() {
+    //mobilde giren kullanıcıların user id'leri ile databasede saklanıyor. webte ise unique bir id oluşturuluyor.
+    const key = 'unique_id';
+    final storedId = html.window.localStorage[key];
+
+    if (storedId != null) {
+      return storedId;
+    } else {
+      final newId = DateTime.now().millisecondsSinceEpoch.toString();
+      html.window.localStorage[key] = newId;
+      return newId;
+    }
+  }
+
+  Future<void> getUniqueDeviceId() async {
+    //sipariş ekranına giren kullanıcıların unique id'lerini database'e ekleme
+    //todo bu işlem güvenlik algoritmalarını da içeren farklı bir yere taşınabilir
+
+    await FirebaseFirestore.instance
+        .collection("Restaurants/${widget.id}/Tables")
+        .doc(widget.tableNo).update(
+        {
+          'users': FieldValue.arrayUnion([getUniqueId()]),
+        });
+  }
+
+  @override
+  void initState() {
+    getUniqueDeviceId();
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,12 +59,12 @@ class MenuScreen extends StatelessWidget {
             MaterialPageRoute(
               builder: (context) => OrdersPage(
                 ordersRef: FirebaseFirestore.instance
-                    .collection("Restaurants/${id}/Tables")
-                    .doc(tableNo)
+                    .collection("Restaurants/${widget.id}/Tables")
+                    .doc(widget.tableNo)
                     .collection("Orders"),
                 tableRef: FirebaseFirestore.instance
-                    .collection("Restaurants/${id}/Tables")
-                    .doc(tableNo),
+                    .collection("Restaurants/${widget.id}/Tables")
+                    .doc(widget.tableNo),
               ),
             ),
           );
@@ -36,12 +73,12 @@ class MenuScreen extends StatelessWidget {
       ),
       appBar: AppBar(
         title: RestaurantNameText(
-          id: id,
+          id: widget.id,
         ),
       ),
       body: StreamBuilder(
         stream: FirebaseFirestore.instance
-            .collection("Restaurants/$id/MenuCategory")
+            .collection("Restaurants/${widget.id}/MenuCategory")
             .orderBy("name", descending: true)
             .snapshots(),
         builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -57,9 +94,9 @@ class MenuScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => CategoryItemsList(
-                          restaurantPath: "Restaurants/$id",
+                          restaurantPath: "Restaurants/${widget.id}",
                           selectedCategory: document['name'],
-                          table: tableNo,
+                          table: widget.tableNo,
                         ),
                       ),
                     );
