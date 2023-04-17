@@ -33,10 +33,6 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
   }
 
   void confirmOrders() async {
-    setState(() {
-      _tabController.animateTo(1);
-    });
-
     final ordersSnapshot = await widget.ordersRef.get();
     final orders = ordersSnapshot.docs
         .where((doc) => doc['quantity_notSubmitted_notServiced'] > 0)
@@ -56,6 +52,11 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
         'quantity_Submitted_notServiced': newQuantity,
       });
     }
+
+    setState(() {
+      _tabController.animateTo(1);
+    });
+
   }
 
   @override
@@ -214,6 +215,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
         } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(child: Text("No orders"));
         }
+
         final submittedOrders = snapshot.data!.docs
             .where((doc) =>
                 doc['quantity_Submitted_notServiced'] > 0 ||
