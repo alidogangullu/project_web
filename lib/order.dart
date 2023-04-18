@@ -120,7 +120,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                         return const SizedBox();
                       }
                       final name = snapshot.data!.get('name') as String;
-                      final price = snapshot.data!.get('price') as double;
+                      final price = snapshot.data!.get('price');
                       return Card(
                         child: Row(
                           children: [
