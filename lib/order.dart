@@ -325,7 +325,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                                           final name = snapshot.data!
                                               .get('name') as String;
                                           final price = snapshot.data!
-                                              .get('price') as double;
+                                              .get('price');
                                           final quantity = order[
                                                   'quantity_Submitted_notServiced'] +
                                               order[
