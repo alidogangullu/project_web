@@ -294,7 +294,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                       )),
                       context: context,
                       builder: (BuildContext context) {
-                        return Container(
+                        return SizedBox(
                           height: MediaQuery.of(context).size.height * 0.8,
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
@@ -411,7 +411,6 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                 .delete(); // Delete from table orders
           }
 
-          Navigator.pop(context);
         } else {
           for (final userID in userIds) {
             // Get a reference to the orders collection for this table.
@@ -460,11 +459,43 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
             //reset table users after transfering order data
             await widget.tableRef.update({'users': []});
 
-            Navigator.pop(context);
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const PaymentSuccessScreen()
+              ),
+            );
           }
         }
       },
       child: const Text("Pay with ..."),
+    );
+  }
+}
+
+class PaymentSuccessScreen extends StatelessWidget {
+  const PaymentSuccessScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(
+              Icons.check_circle,
+              size: 100,
+              color: Colors.green,
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Payment Successful',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
