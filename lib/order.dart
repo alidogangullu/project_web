@@ -222,18 +222,21 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                 doc['quantity_Submitted_notServiced'] > 0 ||
                 doc['quantity_Submitted_Serviced'] > 0)
             .toList();
+
         // Calculate the total amount for payment bottom sheet
         double totalAmount = 0;
 
         for (var order in submittedOrders) {
           final reference = order['itemRef'] as DocumentReference;
-          double price = 0;
+
           final quantity = order['quantity_Submitted_notServiced'] +
               order['quantity_Submitted_Serviced'];
+
           reference.get().then((DocumentSnapshot documentSnapshot) {
-            price = documentSnapshot["price"];
-              totalAmount += price * quantity;
+            final price = documentSnapshot["price"];
+            totalAmount += price * quantity;
           });
+
         }
 
         return Column(
@@ -253,7 +256,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                         return const SizedBox();
                       }
                       final name = snapshot.data!.get('name') as String;
-                      final price = snapshot.data!.get('price') as double;
+                      final price = snapshot.data!.get('price');
                       int quantity = order['quantity_Submitted_notServiced'] +
                           order['quantity_Submitted_Serviced'];
                       return Card(
