@@ -22,11 +22,11 @@ class _MenuScreenState extends State<MenuScreen> {
     final storedId = html.window.localStorage[key];
 
     if (storedId != null) {
-      return storedId;
+      return "web-$storedId";
     } else {
       final newId = DateTime.now().millisecondsSinceEpoch.toString();
       html.window.localStorage[key] = newId;
-      return newId;
+      return "web-$newId";
     }
   }
 

@@ -56,7 +56,6 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
     setState(() {
       _tabController.animateTo(1);
     });
-
   }
 
   @override
@@ -236,7 +235,6 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
             final price = documentSnapshot["price"];
             totalAmount += price * quantity;
           });
-
         }
 
         return Column(
@@ -327,8 +325,8 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                                           }
                                           final name = snapshot.data!
                                               .get('name') as String;
-                                          final price = snapshot.data!
-                                              .get('price');
+                                          final price =
+                                              snapshot.data!.get('price');
                                           final quantity = order[
                                                   'quantity_Submitted_notServiced'] +
                                               order[
@@ -413,7 +411,6 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                 .doc(orderSnapshot.id)
                 .delete(); // Delete from table orders
           }
-
         } else {
           for (final userID in userIds) {
             // Get a reference to the orders collection for this table.
@@ -425,48 +422,56 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
 
             String completedOrderId = "web+${DateTime.now()}";
 
-
             //split "-" because of -admin
             String userId = userID.split("-").first;
 
-            await usersRef
-                .doc(userId)
-                .collection('completedOrders')
-                .doc(completedOrderId)
-                .set({
-              'restaurantRef': restaurantRef,
-              'timestamp': Timestamp.now(),
-              'items': []
-            });
+            if (!userId.contains("web")) {
+              //registered userid add to completed orders then delete order
+              await usersRef
+                  .doc(userId)
+                  .collection('completedOrders')
+                  .doc(completedOrderId)
+                  .set({
+                'restaurantRef': restaurantRef,
+                'timestamp': Timestamp.now(),
+                'items': []
+              });
 
-            for (final orderSnapshot in tableOrdersSnapshot.docs) {
-              final orderData = orderSnapshot.data();
-              final submittedServiced =
-                  orderData['quantity_Submitted_Serviced'] as int;
-              final submittedNotServiced =
-                  orderData['quantity_Submitted_notServiced'] as int;
-              if (submittedServiced > 0 || submittedNotServiced > 0) {
-                await usersRef
-                    .doc(userId)
-                    .collection('completedOrders')
-                    .doc(completedOrderId)
-                    .update({
-                  'items': FieldValue.arrayUnion([orderData])
-                });
+              for (final orderSnapshot in tableOrdersSnapshot.docs) {
+                final orderData = orderSnapshot.data();
+                final submittedServiced =
+                    orderData['quantity_Submitted_Serviced'] as int;
+                final submittedNotServiced =
+                    orderData['quantity_Submitted_notServiced'] as int;
+                if (submittedServiced > 0 || submittedNotServiced > 0) {
+                  await usersRef
+                      .doc(userId)
+                      .collection('completedOrders')
+                      .doc(completedOrderId)
+                      .update({
+                    'items': FieldValue.arrayUnion([orderData])
+                  });
+                }
+                await tableOrdersRef
+                    .doc(orderSnapshot.id)
+                    .delete(); // Delete from table orders
               }
-              await tableOrdersRef
-                  .doc(orderSnapshot.id)
-                  .delete(); // Delete from table orders
+            } else {
+              //unregistered userid just delete order
+              for (final orderSnapshot in tableOrdersSnapshot.docs) {
+                await tableOrdersRef
+                    .doc(orderSnapshot.id)
+                    .delete(); // Delete from table orders
+              }
             }
 
-            //reset table users after transfering order data
+            //reset table users after transferring order data
             await widget.tableRef.update({'users': []});
 
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                  builder: (context) => const PaymentSuccessScreen()
-              ),
+                  builder: (context) => const PaymentSuccessScreen()),
             );
           }
         }
