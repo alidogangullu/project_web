@@ -50,6 +50,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
       await widget.ordersRef.doc(order.id).update({
         'quantity_notSubmitted_notServiced': 0,
         'quantity_Submitted_notServiced': newQuantity,
+        'newNotification': true
       });
     }
 
@@ -139,7 +140,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                                   // Update the quantity in Firestore
                                   await widget.ordersRef.doc(orderID).update({
                                     'quantity_notSubmitted_notServiced': order[
-                                        'quantity_notSubmitted_notServiced']
+                                        'quantity_notSubmitted_notServiced'],
                                   });
 
                                   setState(() {});
