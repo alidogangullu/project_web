@@ -1,19 +1,48 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:project_web/restaurantMenu.dart';
 import 'package:slide_to_act/slide_to_act.dart';
 
 class OrdersPage extends StatefulWidget {
-  const OrdersPage({Key? key, required this.ordersRef, required this.tableRef})
+  const OrdersPage(
+      {Key? key,
+      required this.ordersRef,
+      required this.tableRef,
+      required this.restaurantPath,
+      required this.table})
       : super(key: key);
 
   final DocumentReference tableRef;
   final CollectionReference ordersRef;
+  final String restaurantPath;
+  final String table;
   @override
   State<OrdersPage> createState() => _OrdersState();
 }
 
 class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
   late TabController _tabController;
+
+  Future<bool> checkAuthorizedUser() async {
+    final usersSnapshot = await FirebaseFirestore.instance
+        .collection("${widget.restaurantPath}/Tables")
+        .doc(widget.table)
+        .get();
+    final List<dynamic> users = usersSnapshot.data()!['users'];
+    if (users.contains(MenuScreen.getUniqueId()) ||
+        users.contains("${MenuScreen.getUniqueId()}-admin")) {
+      return true;
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("You are not authorized to this action."),
+      ));
+      Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const UnauthorizedActionScreen()),
+          (route) => false);
+      return false;
+    }
+  }
 
   @override
   void initState() {
@@ -33,30 +62,32 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
   }
 
   void confirmOrders() async {
-    final ordersSnapshot = await widget.ordersRef.get();
-    final orders = ordersSnapshot.docs
-        .where((doc) => doc['quantity_notSubmitted_notServiced'] > 0)
-        .toList();
+    if (await checkAuthorizedUser()) {
+      final ordersSnapshot = await widget.ordersRef.get();
+      final orders = ordersSnapshot.docs
+          .where((doc) => doc['quantity_notSubmitted_notServiced'] > 0)
+          .toList();
 
-    for (final order in orders) {
-      final oldQuantity = order['quantity_notSubmitted_notServiced'];
-      final submittedQuantity = order['quantity_Submitted_notServiced'];
-      int newQuantity;
-      if (submittedQuantity != null) {
-        newQuantity = oldQuantity + submittedQuantity;
-      } else {
-        newQuantity = oldQuantity;
+      for (final order in orders) {
+        final oldQuantity = order['quantity_notSubmitted_notServiced'];
+        final submittedQuantity = order['quantity_Submitted_notServiced'];
+        int newQuantity;
+        if (submittedQuantity != null) {
+          newQuantity = oldQuantity + submittedQuantity;
+        } else {
+          newQuantity = oldQuantity;
+        }
+        await widget.ordersRef.doc(order.id).update({
+          'quantity_notSubmitted_notServiced': 0,
+          'quantity_Submitted_notServiced': newQuantity,
+          'newNotification': true
+        });
       }
-      await widget.ordersRef.doc(order.id).update({
-        'quantity_notSubmitted_notServiced': 0,
-        'quantity_Submitted_notServiced': newQuantity,
-        'newNotification': true
+
+      setState(() {
+        _tabController.animateTo(1);
       });
     }
-
-    setState(() {
-      _tabController.animateTo(1);
-    });
   }
 
   @override
@@ -89,6 +120,44 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
   }
 
   Column notSubmittedOrdersTab() {
+    void deleteAnItem(var order, var orderID) async {
+      if (await checkAuthorizedUser()) {
+        if (order['quantity_notSubmitted_notServiced'] != 1) {
+          order['quantity_notSubmitted_notServiced']--;
+          // Update the quantity in Firestore
+          await widget.ordersRef.doc(orderID).update({
+            'quantity_notSubmitted_notServiced':
+                order['quantity_notSubmitted_notServiced']
+          });
+          setState(() {});
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                "Last item! Use delete button to delete this item from order list."),
+          ));
+        }
+      }
+    }
+
+    void deleteAllItems(var order, var orderID) async {
+      if (await checkAuthorizedUser()) {
+        await widget.ordersRef.doc(orderID).delete();
+        setState(() {});
+      }
+    }
+
+    void addItem(var order, var orderID) async {
+      if (await checkAuthorizedUser()) {
+        order['quantity_notSubmitted_notServiced']++;
+        // Update the quantity in Firestore
+        await widget.ordersRef.doc(orderID).update({
+          'quantity_notSubmitted_notServiced':
+              order['quantity_notSubmitted_notServiced']
+        });
+        setState(() {});
+      }
+    }
+
     return Column(
       children: [
         Expanded(
@@ -131,20 +200,8 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                               ),
                             ),
                             IconButton(
-                              onPressed: () async {
-                                if (order[
-                                        'quantity_notSubmitted_notServiced'] !=
-                                    1) {
-                                  order['quantity_notSubmitted_notServiced']--;
-
-                                  // Update the quantity in Firestore
-                                  await widget.ordersRef.doc(orderID).update({
-                                    'quantity_notSubmitted_notServiced': order[
-                                        'quantity_notSubmitted_notServiced'],
-                                  });
-
-                                  setState(() {});
-                                }
+                              onPressed: () {
+                                deleteAnItem(order, orderID);
                               },
                               icon: const Icon(
                                 Icons.remove,
@@ -156,16 +213,8 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                               style: const TextStyle(fontSize: 16),
                             ),
                             IconButton(
-                              onPressed: () async {
-                                order['quantity_notSubmitted_notServiced']++;
-
-                                // Update the quantity in Firestore
-                                await widget.ordersRef.doc(orderID).update({
-                                  'quantity_notSubmitted_notServiced':
-                                      order['quantity_notSubmitted_notServiced']
-                                });
-
-                                setState(() {});
+                              onPressed: () {
+                                addItem(order, orderID);
                               },
                               icon: const Icon(
                                 Icons.add,
@@ -177,8 +226,8 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                               style: const TextStyle(fontSize: 16),
                             ),
                             IconButton(
-                              onPressed: () async {
-                                await widget.ordersRef.doc(orderID).delete();
+                              onPressed: () {
+                                deleteAllItems(order, orderID);
                               },
                               icon: const Icon(Icons.delete),
                               padding: const EdgeInsets.only(right: 8),
@@ -287,97 +336,99 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                     ),
                   ),
                   onPressed: () async {
-                    var submittedOrdersLength = submittedOrders.length;
-                    showModalBottomSheet(
-                      shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(52),
-                        topRight: Radius.circular(52),
-                      )),
-                      context: context,
-                      builder: (BuildContext context) {
-                        return SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.8,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Summary',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Expanded(
-                                  child: ListView.builder(
-                                    itemCount: submittedOrdersLength,
-                                    itemBuilder: (context, index) {
-                                      final order = submittedOrders[index];
-                                      return FutureBuilder<DocumentSnapshot>(
-                                        future: (order['itemRef']
-                                                as DocumentReference)
-                                            .get(),
-                                        builder: (context, snapshot) {
-                                          if (!snapshot.hasData) {
-                                            return const SizedBox();
-                                          }
-                                          final name = snapshot.data!
-                                              .get('name') as String;
-                                          final price =
-                                              snapshot.data!.get('price');
-                                          final quantity = order[
-                                                  'quantity_Submitted_notServiced'] +
-                                              order[
-                                                  'quantity_Submitted_Serviced'];
-                                          return ListTile(
-                                            title: Text(name),
-                                            subtitle: Text('x $quantity'),
-                                            trailing: Text(
-                                                '${(price).toStringAsFixed(2)}\$'),
-                                          );
-                                        },
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const Divider(),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text(
-                                      'Total',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                    if (await checkAuthorizedUser()) {
+                      var submittedOrdersLength = submittedOrders.length;
+                      showModalBottomSheet(
+                        shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(52),
+                          topRight: Radius.circular(52),
+                        )),
+                        context: context,
+                        builder: (BuildContext context) {
+                          return SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.8,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Summary',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    Text(
-                                      '${totalAmount.toStringAsFixed(2)}\$',
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Expanded(
+                                    child: ListView.builder(
+                                      itemCount: submittedOrdersLength,
+                                      itemBuilder: (context, index) {
+                                        final order = submittedOrders[index];
+                                        return FutureBuilder<DocumentSnapshot>(
+                                          future: (order['itemRef']
+                                                  as DocumentReference)
+                                              .get(),
+                                          builder: (context, snapshot) {
+                                            if (!snapshot.hasData) {
+                                              return const SizedBox();
+                                            }
+                                            final name = snapshot.data!
+                                                .get('name') as String;
+                                            final price =
+                                                snapshot.data!.get('price');
+                                            final quantity = order[
+                                                    'quantity_Submitted_notServiced'] +
+                                                order[
+                                                    'quantity_Submitted_Serviced'];
+                                            return ListTile(
+                                              title: Text(name),
+                                              subtitle: Text('x $quantity'),
+                                              trailing: Text(
+                                                  '${(price).toStringAsFixed(2)}\$'),
+                                            );
+                                          },
+                                        );
+                                      },
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    paymentButton(),
-                                  ],
-                                ),
-                              ],
+                                  ),
+                                  const Divider(),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        'Total',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${totalAmount.toStringAsFixed(2)}\$',
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      paymentButton(),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    );
+                          );
+                        },
+                      );
+                    }
                   },
                   child: const Text(
                     "Summary and Payment",
@@ -395,85 +446,87 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
   ElevatedButton paymentButton() {
     return ElevatedButton(
       onPressed: () async {
-        // TODO: Implement payment functionality, now its just for testing.
+        if (await checkAuthorizedUser()) {
+          // TODO: Implement payment functionality, now its just for testing.
 
-        final usersRef = FirebaseFirestore.instance.collection('users');
+          final usersRef = FirebaseFirestore.instance.collection('users');
 
-        // Get the list of user IDs from the table.
-        final tableSnapshot = await widget.tableRef.get();
-        final userIds = List<String>.from(tableSnapshot.get('users'));
+          // Get the list of user IDs from the table.
+          final tableSnapshot = await widget.tableRef.get();
+          final userIds = List<String>.from(tableSnapshot.get('users'));
 
-        if (userIds.isEmpty) {
-          final tableOrdersRef = widget.tableRef.collection('Orders');
-          final tableOrdersSnapshot = await tableOrdersRef.get();
-
-          for (final orderSnapshot in tableOrdersSnapshot.docs) {
-            await tableOrdersRef
-                .doc(orderSnapshot.id)
-                .delete(); // Delete from table orders
-          }
-        } else {
-          for (final userID in userIds) {
-            // Get a reference to the orders collection for this table.
+          if (userIds.isEmpty) {
             final tableOrdersRef = widget.tableRef.collection('Orders');
-            final restaurantRef = widget.tableRef.parent.parent;
-
-            // Loop through the orders for this table and transfer them to the user's orders collection.
             final tableOrdersSnapshot = await tableOrdersRef.get();
 
-            String completedOrderId = "web+${DateTime.now()}";
-
-            //split "-" because of -admin
-            String userId = userID.split("-").first;
-
-            if (!userId.contains("web")) {
-              //registered userid add to completed orders then delete order
-              await usersRef
-                  .doc(userId)
-                  .collection('completedOrders')
-                  .doc(completedOrderId)
-                  .set({
-                'restaurantRef': restaurantRef,
-                'timestamp': Timestamp.now(),
-                'items': []
-              });
-
-              for (final orderSnapshot in tableOrdersSnapshot.docs) {
-                final orderData = orderSnapshot.data();
-                final submittedServiced =
-                    orderData['quantity_Submitted_Serviced'] as int;
-                final submittedNotServiced =
-                    orderData['quantity_Submitted_notServiced'] as int;
-                if (submittedServiced > 0 || submittedNotServiced > 0) {
-                  await usersRef
-                      .doc(userId)
-                      .collection('completedOrders')
-                      .doc(completedOrderId)
-                      .update({
-                    'items': FieldValue.arrayUnion([orderData])
-                  });
-                }
-                await tableOrdersRef
-                    .doc(orderSnapshot.id)
-                    .delete(); // Delete from table orders
-              }
-            } else {
-              //unregistered userid just delete order
-              for (final orderSnapshot in tableOrdersSnapshot.docs) {
-                await tableOrdersRef
-                    .doc(orderSnapshot.id)
-                    .delete(); // Delete from table orders
-              }
+            for (final orderSnapshot in tableOrdersSnapshot.docs) {
+              await tableOrdersRef
+                  .doc(orderSnapshot.id)
+                  .delete(); // Delete from table orders
             }
+          } else {
+            for (final userID in userIds) {
+              // Get a reference to the orders collection for this table.
+              final tableOrdersRef = widget.tableRef.collection('Orders');
+              final restaurantRef = widget.tableRef.parent.parent;
 
-            //reset table users after transferring order data
-            await widget.tableRef.update({'users': []});
+              // Loop through the orders for this table and transfer them to the user's orders collection.
+              final tableOrdersSnapshot = await tableOrdersRef.get();
 
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const PaymentSuccessScreen()),
-            );
+              String completedOrderId = "web+${DateTime.now()}";
+
+              //split "-" because of -admin
+              String userId = userID.split("-").first;
+
+              if (!userId.contains("web")) {
+                //registered userid add to completed orders then delete order
+                await usersRef
+                    .doc(userId)
+                    .collection('completedOrders')
+                    .doc(completedOrderId)
+                    .set({
+                  'restaurantRef': restaurantRef,
+                  'timestamp': Timestamp.now(),
+                  'items': []
+                });
+
+                for (final orderSnapshot in tableOrdersSnapshot.docs) {
+                  final orderData = orderSnapshot.data();
+                  final submittedServiced =
+                      orderData['quantity_Submitted_Serviced'] as int;
+                  final submittedNotServiced =
+                      orderData['quantity_Submitted_notServiced'] as int;
+                  if (submittedServiced > 0 || submittedNotServiced > 0) {
+                    await usersRef
+                        .doc(userId)
+                        .collection('completedOrders')
+                        .doc(completedOrderId)
+                        .update({
+                      'items': FieldValue.arrayUnion([orderData])
+                    });
+                  }
+                  await tableOrdersRef
+                      .doc(orderSnapshot.id)
+                      .delete(); // Delete from table orders
+                }
+              } else {
+                //unregistered userid just delete order
+                for (final orderSnapshot in tableOrdersSnapshot.docs) {
+                  await tableOrdersRef
+                      .doc(orderSnapshot.id)
+                      .delete(); // Delete from table orders
+                }
+              }
+
+              //reset table users after transferring order data
+              await widget.tableRef.update({'users': []});
+
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const PaymentSuccessScreen()),
+              );
+            }
           }
         }
       },
@@ -500,6 +553,33 @@ class PaymentSuccessScreen extends StatelessWidget {
             SizedBox(height: 20),
             Text(
               'Payment Successful',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class UnauthorizedActionScreen extends StatelessWidget {
+  const UnauthorizedActionScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(
+              Icons.error,
+              size: 100,
+              color: Colors.red,
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Not Allowed Action',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ],
