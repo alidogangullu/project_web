@@ -20,7 +20,7 @@ Future<void> main() async {
     ));
   } else {
     //error case
-    runApp(const MyApp(
+    runApp(MyApp(
       id: "vAkYpJA6Pd6UTEPDysvj",
       tableNo: "1",
     ));
@@ -31,12 +31,28 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key, required this.id, required this.tableNo});
   final String id, tableNo;
 
+  final MaterialColor myColor = const MaterialColor(
+    0xFF008C8C,
+    <int, Color>{
+      50: Color(0xFFE0F2F2),
+      100: Color(0xFFB3CCCC),
+      200: Color(0xFF80B2B2),
+      300: Color(0xFF4D9999),
+      400: Color(0xFF267F7F),
+      500: Color(0xFF008C8C),
+      600: Color(0xFF007474),
+      700: Color(0xFF006060),
+      800: Color(0xFF004C4C),
+      900: Color(0xFF003838),
+    },
+  );
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: myColor,
       ),
       home: MenuScreen(
         id: id,
