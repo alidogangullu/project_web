@@ -6,7 +6,7 @@ import 'firebase_options.dart';
 Future<void> main() async {
   //String url = Uri.base.toString(); //url yi çekmek için
   //qr koddan gelen url path formatı = /?id="restaurantID"&tableNo="tableNo"
-  //örnek url https://restaurantapp-2a43d.web.app/?id=vAkYpJA6Pd6UTEPDysvj&tableNo=1
+  //örnek url https://restaurantapp-2a43d.web.app/?id=qVu4d36x4BY9opVCDbtr&tableNo=1
   String? id = Uri.base.queryParameters["id"];
   String? tableNo = Uri.base.queryParameters["tableNo"];
   await Firebase.initializeApp(
