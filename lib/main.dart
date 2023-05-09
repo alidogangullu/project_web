@@ -14,14 +14,13 @@ Future<void> main() async {
   );
   if (id != null && tableNo != null) {
     runApp(MyApp(
-      //daha sonra id ve tableNo parametre olarak verilecek şuan test için ayarlandı.
-      id: "vAkYpJA6Pd6UTEPDysvj",
-      tableNo: "1",
+      id: id,
+      tableNo: tableNo,
     ));
   } else {
-    //error case
+    //error case, also for testing
     runApp(MyApp(
-      id: "vAkYpJA6Pd6UTEPDysvj",
+      id: "qVu4d36x4BY9opVCDbtr",
       tableNo: "1",
     ));
   }
