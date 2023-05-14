@@ -302,10 +302,7 @@ class _ItemsGridState extends State<ItemsGrid> {
   Widget build(BuildContext context) {
     return GridView.count(
       crossAxisCount: 2,
-      childAspectRatio: 0.60,
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      padding: const EdgeInsets.all(10),
+      childAspectRatio: 0.70,
       children: widget.documents.map((document) {
         return GestureDetector(
           onTap: () {
@@ -331,7 +328,7 @@ class _ItemsGridState extends State<ItemsGrid> {
                             topRight: Radius.circular(20),
                           ),
                           child: AspectRatio(
-                            aspectRatio: 3.5,
+                            aspectRatio: 2,
                             child: Image.network(
                               document["image_url"],
                               fit: BoxFit.fitWidth,
@@ -390,7 +387,7 @@ class _ItemsGridState extends State<ItemsGrid> {
                               children: [
                                 IconButton(
                                   onPressed: () {
-                                    if (selectedQuantity != 0) {
+                                    if (selectedQuantity != 1) {
                                       setState(() {
                                         selectedQuantity--;
                                       });
@@ -416,7 +413,7 @@ class _ItemsGridState extends State<ItemsGrid> {
                           child: Row(
                             children: [
                               Text(
-                                'Content: ${document['content']}',
+                                '${document['content']}',
                                 style: const TextStyle(fontSize: 16),
                               ),
                             ],
@@ -509,17 +506,17 @@ class _ItemsGridState extends State<ItemsGrid> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 5, 10, 0),
+                    padding: const EdgeInsets.all(10),
                     child: Text(
                       document['name'],
                       style: const TextStyle(
-                        fontSize: 25,
+                        fontSize: 20,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(15, 5, 15, 0),
+                    padding: const EdgeInsets.fromLTRB(15, 0, 15, 15),
                     child: Row(
                       children: [
                         const Icon(
@@ -536,7 +533,7 @@ class _ItemsGridState extends State<ItemsGrid> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(15, 5, 15, 5),
+                    padding: const EdgeInsets.fromLTRB(15, 0, 15, 15),
                     child: Text(
                       "\$ ${document['price']}",
                       style: const TextStyle(fontSize: 16),
