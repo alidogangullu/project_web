@@ -153,9 +153,31 @@ class _MenuScreenState extends State<MenuScreen> {
     listenUnauthorizedUsers();
   }
 
+  void sendWaiterRequest() async {
+    await FirebaseFirestore.instance
+        .collection("Restaurants/${widget.id}/Tables")
+        .doc(widget.tableNo).update({
+      'newNotification': true,
+      'notifications': FieldValue.arrayUnion([
+        "A waiter request has been sent."
+      ]),
+    });
+    const snackBar = SnackBar(
+      content: Text('A waiter request has been sent.'),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Send newNotification value to Firebase
+          sendWaiterRequest();
+        },
+        child: const Icon(Icons.notifications),
+      ),
       appBar: AppBar(
         actions: [
           ShoppingCartButton(
