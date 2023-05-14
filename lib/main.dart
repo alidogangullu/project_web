@@ -20,7 +20,7 @@ Future<void> main() async {
   } else {
     //error case, also for testing
     runApp(MyApp(
-      id: "qVu4d36x4BY9opVCDbtr",
+      id: "GixzDeIROMDRAn2mAnMG",
       tableNo: "1",
     ));
   }
