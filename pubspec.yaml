@@ -15,6 +15,8 @@ dependencies:
   firebase_core: ^2.9.0
   cloud_firestore: ^4.5.0
   slide_to_act: ^2.0.1
+  geolocator: ^7.6.2
+  
 
 dev_dependencies:
   flutter_test:
