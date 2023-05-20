@@ -75,7 +75,6 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
         int newQuantity = 0;
         if (submittedQuantity != null) {
           newQuantity = toSubmitQuantity + submittedQuantity;
-
           if(order['orderedTime'] == 0) {
             await widget.ordersRef.doc(order.id).update({
               "orderedTime": DateTime.now(),
