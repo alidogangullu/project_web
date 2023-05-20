@@ -39,6 +39,8 @@ class _MenuScreenState extends State<MenuScreen> {
         .then((document) async {
       users = document.data()!['users'];
 
+      bool onlyWaiter = users.length == 1 && users.contains("waiter");
+
       if (users.isEmpty) {
         await FirebaseFirestore.instance
             .collection("Restaurants/${widget.id}/Tables")
@@ -52,7 +54,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
       bool isAdmin = users.isEmpty ||
           users.contains(
-              "${MenuScreen.getUniqueId()}-admin"); // First accessed user is admin
+              "${MenuScreen.getUniqueId()}-admin")  || onlyWaiter; // First accessed user is admin
 
       if (isAdmin) {
         String userId = '${MenuScreen.getUniqueId()}${isAdmin ? '-admin' : ''}';
@@ -340,6 +342,12 @@ class _ItemsGridState extends State<ItemsGrid> {
               ),
               builder: (BuildContext context) {
                 int selectedQuantity = 1;
+
+                double seconds = double.parse(document['estimatedTime'].toString());
+                int minutes = (seconds ~/ 60).toInt();
+                double remainingSeconds = seconds % 60;
+                String formattedSeconds = remainingSeconds.toStringAsFixed(0);
+
                 return StatefulBuilder(
                   builder: (BuildContext context, setState) {
                     return Wrap(
@@ -353,7 +361,7 @@ class _ItemsGridState extends State<ItemsGrid> {
                             aspectRatio: 2,
                             child: Image.network(
                               document["image_url"],
-                              fit: BoxFit.fitWidth,
+                              fit: BoxFit.cover,
                             ),
                           ),
                         ),
@@ -449,6 +457,11 @@ class _ItemsGridState extends State<ItemsGrid> {
                                 '${document['price']} \$',
                                 style: const TextStyle(fontSize: 20),
                               ),
+                              if(document['orderCount']>5)
+                                Text(
+                                  "$minutes min $formattedSeconds sec service time",
+                                  style: const TextStyle(fontSize: 15),
+                                ),
                             ],
                           ),
                         ),
@@ -491,6 +504,7 @@ class _ItemsGridState extends State<ItemsGrid> {
                                     selectedQuantity,
                                 "quantity_Submitted_notServiced": 0,
                                 "quantity_Submitted_Serviced": 0,
+                                "orderedTime": 0,
                               });
                             }
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -524,7 +538,7 @@ class _ItemsGridState extends State<ItemsGrid> {
                     aspectRatio: 1.2,
                     child: Image.network(
                       document["image_url"],
-                      fit: BoxFit.fitWidth,
+                      fit: BoxFit.cover,
                     ),
                   ),
                   Padding(
