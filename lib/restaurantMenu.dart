@@ -1,8 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:html' as html;
 import 'customWidgets.dart';
 import 'order.dart';
+import 'package:geolocator_web/geolocator_web.dart';
+import 'package:location/location.dart';
+
+double desiredLatitude = 0.0; // Replace with the desired latitude
+double desiredLongitude = 0.0; // Replace with the desired longitude
+
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key, required this.id, required this.tableNo});
@@ -30,6 +37,69 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> {
   List<dynamic> users = [];
+  final Location _location = Location();
+  bool _locationEnabled = false;
+  LocationData? _locationData;
+
+  Future<void> checkLocationEnabled() async {
+    bool serviceEnabled = await _location.serviceEnabled();
+    if (!serviceEnabled) {
+      serviceEnabled = await _location.requestService();
+      if (!serviceEnabled) {
+        return;
+      }
+    }
+    setState(() {
+      _locationEnabled = true;
+    });
+    _location.onLocationChanged.listen((LocationData? locationData) {
+      setState(() {
+        _locationData = locationData;
+      });
+    });
+  }
+
+  bool isLocationEnabled() {
+    return _locationEnabled;
+  }
+
+  LocationData? getLocationData() {
+    return _locationData;
+  }
+
+  static bool isDesiredLocation(LocationData? locationData, double desiredLatitude, double desiredLongitude) {
+    double maxDistanceMeters = 10; //Erisilebilir mesafe
+
+    if (locationData == null) {
+      return false;
+    }
+
+    double distanceInMeters = Geolocator.distanceBetween(
+      desiredLatitude,
+      desiredLongitude,
+      locationData.latitude!,
+      locationData.longitude!,
+    );
+    return distanceInMeters <= maxDistanceMeters;
+  }
+
+
+  Future<void> _fetchLocationData(String restaurantId) async {
+    DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
+        .collection("Restaurants")
+        .doc(restaurantId) // replace with your restaurantId variable
+        .get();
+    if (documentSnapshot.exists) {
+      desiredLatitude = documentSnapshot["location"][0];
+      desiredLongitude = documentSnapshot["location"][1];
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Error: Could not retrieve location data!"),
+        ),
+      );
+    }
+  }
 
   Future<void> listenUnauthorizedUsers() async {
     await FirebaseFirestore.instance
@@ -153,6 +223,7 @@ class _MenuScreenState extends State<MenuScreen> {
   void initState() {
     super.initState();
     listenUnauthorizedUsers();
+    checkLocationEnabled();
   }
 
   void sendWaiterRequest() async {
