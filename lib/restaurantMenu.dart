@@ -4,8 +4,10 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:html' as html;
 import 'customWidgets.dart';
 import 'order.dart';
-import 'package:geolocator_web/geolocator_web.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:location/location.dart';
+import 'package:safe_device/safe_device.dart';
+
 
 double desiredLatitude = 0.0; // Replace with the desired latitude
 double desiredLongitude = 0.0; // Replace with the desired longitude
@@ -57,6 +59,7 @@ class _MenuScreenState extends State<MenuScreen> {
         _locationData = locationData;
       });
     });
+
   }
 
   bool isLocationEnabled() {
@@ -206,6 +209,61 @@ class _MenuScreenState extends State<MenuScreen> {
   String selected = "";
   String _searchQuery = '';
   final searchController = TextEditingController();
+  bool scanned = false;
+
+  Future<void> locationChecker() async {
+    MobileScanner(
+      onDetect: (capture) async {
+        if (capture.barcodes.first.rawValue!.contains("2a43d") && !scanned) {
+          scanned = true;
+
+          //alakalı olmayan qr kodların silinmesi
+          for (var element in capture.barcodes.toList()) {
+            if (!element.rawValue!.contains("2a43d")) {
+              capture.barcodes.remove(element);
+            }
+          }
+
+          bool isSafeDevice = await SafeDevice.isSafeDevice;
+          if (isSafeDevice) {
+            //okunan ilk uygun formatlı değere sahip qr koddan parametrelerin alınması
+            String? url = capture.barcodes.first.rawValue;
+            Uri uri = Uri.parse(url!);
+            String restaurantId = uri.queryParameters['id']!;
+            String tableNo = uri.queryParameters['tableNo']!;
+
+            _fetchLocationData(restaurantId);
+
+            //parametreleri kullanarak yönlendirme ve security check
+            if (isLocationEnabled() &&
+                isDesiredLocation(getLocationData(), desiredLatitude, desiredLongitude)) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MenuScreen(
+                    id: restaurantId,
+                    tableNo: tableNo,
+                  ),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("You have to be at the restaurant to access the menu!"),
+                ),
+              );
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("You have to use real location and real device without unauthorized software modifications!"),
+              ),
+            );
+          }
+        }
+      },
+    );
+  }
 
   Future<List<QueryDocumentSnapshot>> getItemsForAllCategories(
       List<QueryDocumentSnapshot> categories) async {
@@ -224,6 +282,7 @@ class _MenuScreenState extends State<MenuScreen> {
     super.initState();
     listenUnauthorizedUsers();
     checkLocationEnabled();
+    locationChecker();
   }
 
   void sendWaiterRequest() async {

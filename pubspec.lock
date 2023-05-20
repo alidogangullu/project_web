@@ -240,6 +240,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.8.0"
+  mobile_scanner:
+    dependency: "direct main"
+    description:
+      name: mobile_scanner
+      sha256: da55204e5439bc8dc058df56231a7a1d513c6ec9cbad84492f56d493382d296f
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.0"
   path:
     dependency: transitive
     description:
@@ -256,6 +264,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.4"
+  safe_device:
+    dependency: "direct main"
+    description:
+      name: safe_device
+      sha256: "7a7e49c6cd0a33798ae604657b9876aadfc1678c9be66a829b36a987c8e4bfd1"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.4"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -317,6 +333,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.4.16"
+  trust_location:
+    dependency: transitive
+    description:
+      name: trust_location
+      sha256: "2457f4bcd9ef8423fd12d8ae1701040ecef37a488e4a46bfa50bad26d8cf7d80"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.13"
   typed_data:
     dependency: transitive
     description:
@@ -335,4 +359,4 @@ packages:
     version: "2.1.4"
 sdks:
   dart: ">=2.18.5 <3.0.0"
-  flutter: ">=1.20.0"
+  flutter: ">=3.3.0"
