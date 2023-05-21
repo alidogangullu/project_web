@@ -262,9 +262,9 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
     );
   }
 
-  FutureBuilder<QuerySnapshot> submittedOrdersTab() {
-    return FutureBuilder<QuerySnapshot>(
-      future: widget.ordersRef.get(),
+  StreamBuilder<QuerySnapshot> submittedOrdersTab() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: widget.ordersRef.snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
