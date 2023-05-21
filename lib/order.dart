@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:project_web/restaurantMenu.dart';
+import 'package:project_web/unauthorizedAction.dart';
 import 'package:slide_to_act/slide_to_act.dart';
 
 class OrdersPage extends StatefulWidget {
@@ -33,12 +34,9 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
         users.contains("${MenuScreen.getUniqueId()}-admin")) {
       return true;
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text("You are not authorized to this action."),
-      ));
       Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const UnauthorizedActionScreen()),
+          MaterialPageRoute(builder: (_) => const UnauthorizedActionScreen(message: "You are not authorized to this action.",),),
           (route) => false);
       return false;
     }
@@ -566,33 +564,6 @@ class PaymentSuccessScreen extends StatelessWidget {
             SizedBox(height: 20),
             Text(
               'Payment Successful',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class UnauthorizedActionScreen extends StatelessWidget {
-  const UnauthorizedActionScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(
-              Icons.error,
-              size: 100,
-              color: Colors.red,
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Not Allowed Action',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ],

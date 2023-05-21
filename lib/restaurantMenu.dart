@@ -1,17 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'dart:html' as html;
 import 'customWidgets.dart';
 import 'order.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:location/location.dart';
-import 'package:safe_device/safe_device.dart';
-
-
-double desiredLatitude = 0.0; // Replace with the desired latitude
-double desiredLongitude = 0.0; // Replace with the desired longitude
-
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key, required this.id, required this.tableNo});
@@ -39,70 +30,6 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> {
   List<dynamic> users = [];
-  final Location _location = Location();
-  bool _locationEnabled = false;
-  LocationData? _locationData;
-
-  Future<void> checkLocationEnabled() async {
-    bool serviceEnabled = await _location.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await _location.requestService();
-      if (!serviceEnabled) {
-        return;
-      }
-    }
-    setState(() {
-      _locationEnabled = true;
-    });
-    _location.onLocationChanged.listen((LocationData? locationData) {
-      setState(() {
-        _locationData = locationData;
-      });
-    });
-
-  }
-
-  bool isLocationEnabled() {
-    return _locationEnabled;
-  }
-
-  LocationData? getLocationData() {
-    return _locationData;
-  }
-
-  static bool isDesiredLocation(LocationData? locationData, double desiredLatitude, double desiredLongitude) {
-    double maxDistanceMeters = 10; //Erisilebilir mesafe
-
-    if (locationData == null) {
-      return false;
-    }
-
-    double distanceInMeters = Geolocator.distanceBetween(
-      desiredLatitude,
-      desiredLongitude,
-      locationData.latitude!,
-      locationData.longitude!,
-    );
-    return distanceInMeters <= maxDistanceMeters;
-  }
-
-
-  Future<void> _fetchLocationData(String restaurantId) async {
-    DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
-        .collection("Restaurants")
-        .doc(restaurantId) // replace with your restaurantId variable
-        .get();
-    if (documentSnapshot.exists) {
-      desiredLatitude = documentSnapshot["location"][0];
-      desiredLongitude = documentSnapshot["location"][1];
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Error: Could not retrieve location data!"),
-        ),
-      );
-    }
-  }
 
   Future<void> listenUnauthorizedUsers() async {
     await FirebaseFirestore.instance
@@ -126,8 +53,8 @@ class _MenuScreenState extends State<MenuScreen> {
       }
 
       bool isAdmin = users.isEmpty ||
-          users.contains(
-              "${MenuScreen.getUniqueId()}-admin")  || onlyWaiter; // First accessed user is admin
+          users.contains("${MenuScreen.getUniqueId()}-admin") ||
+          onlyWaiter; // First accessed user is admin
 
       if (isAdmin) {
         String userId = '${MenuScreen.getUniqueId()}${isAdmin ? '-admin' : ''}';
@@ -209,61 +136,6 @@ class _MenuScreenState extends State<MenuScreen> {
   String selected = "";
   String _searchQuery = '';
   final searchController = TextEditingController();
-  bool scanned = false;
-
-  Future<void> locationChecker() async {
-    MobileScanner(
-      onDetect: (capture) async {
-        if (capture.barcodes.first.rawValue!.contains("2a43d") && !scanned) {
-          scanned = true;
-
-          //alakalı olmayan qr kodların silinmesi
-          for (var element in capture.barcodes.toList()) {
-            if (!element.rawValue!.contains("2a43d")) {
-              capture.barcodes.remove(element);
-            }
-          }
-
-          bool isSafeDevice = await SafeDevice.isSafeDevice;
-          if (isSafeDevice) {
-            //okunan ilk uygun formatlı değere sahip qr koddan parametrelerin alınması
-            String? url = capture.barcodes.first.rawValue;
-            Uri uri = Uri.parse(url!);
-            String restaurantId = uri.queryParameters['id']!;
-            String tableNo = uri.queryParameters['tableNo']!;
-
-            _fetchLocationData(restaurantId);
-
-            //parametreleri kullanarak yönlendirme ve security check
-            if (isLocationEnabled() &&
-                isDesiredLocation(getLocationData(), desiredLatitude, desiredLongitude)) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MenuScreen(
-                    id: restaurantId,
-                    tableNo: tableNo,
-                  ),
-                ),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("You have to be at the restaurant to access the menu!"),
-                ),
-              );
-            }
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("You have to use real location and real device without unauthorized software modifications!"),
-              ),
-            );
-          }
-        }
-      },
-    );
-  }
 
   Future<List<QueryDocumentSnapshot>> getItemsForAllCategories(
       List<QueryDocumentSnapshot> categories) async {
@@ -281,18 +153,16 @@ class _MenuScreenState extends State<MenuScreen> {
   void initState() {
     super.initState();
     listenUnauthorizedUsers();
-    checkLocationEnabled();
-    locationChecker();
   }
 
   void sendWaiterRequest() async {
     await FirebaseFirestore.instance
         .collection("Restaurants/${widget.id}/Tables")
-        .doc(widget.tableNo).update({
+        .doc(widget.tableNo)
+        .update({
       'newNotification': true,
-      'notifications': FieldValue.arrayUnion([
-        "A waiter request has been sent."
-      ]),
+      'notifications':
+          FieldValue.arrayUnion(["A waiter request has been sent."]),
     });
     const snackBar = SnackBar(
       content: Text('A waiter request has been sent.'),
@@ -436,8 +306,7 @@ class ItemsGrid extends StatefulWidget {
   final dynamic selected;
   final String collection;
   final String id;
-  final String? tableNo;
-  final bool justBrowsing;
+  final String tableNo;
 
   const ItemsGrid({
     required this.documents,
@@ -445,8 +314,7 @@ class ItemsGrid extends StatefulWidget {
     required this.selected,
     required this.collection,
     required this.id,
-    this.tableNo,
-    this.justBrowsing = false,
+    required this.tableNo,
   });
 
   @override
@@ -476,14 +344,15 @@ class _ItemsGridState extends State<ItemsGrid> {
                 int selectedQuantity = 1;
 
                 double seconds =
-                double.parse(document['estimatedTime'].toString());
+                    double.parse(document['estimatedTime'].toString());
                 int minutes = (seconds ~/ 60).toInt();
                 double remainingSeconds = seconds % 60;
                 String formattedSeconds = remainingSeconds.toStringAsFixed(0);
 
                 return DraggableScrollableSheet(
                     expand: false,
-                    initialChildSize: 0.6,  // GERÇEK CİHAZDA ÇALIŞIYOR , DESKTOP-WEB ORTAMINDA 1 YAPILMASI LAZIM
+                    initialChildSize:
+                        0.6, // GERÇEK CİHAZDA ÇALIŞIYOR , DESKTOP-WEB ORTAMINDA 1 YAPILMASI LAZIM
                     minChildSize: 0.6,
                     maxChildSize: 1,
                     builder: (BuildContext context, myscrollController) {
@@ -510,16 +379,16 @@ class _ItemsGridState extends State<ItemsGrid> {
                                     ),
                                     Row(
                                       mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Column(
                                           crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Padding(
                                               padding:
-                                              const EdgeInsets.fromLTRB(
-                                                  20, 20, 15, 10),
+                                                  const EdgeInsets.fromLTRB(
+                                                      20, 20, 15, 10),
                                               child: Text(
                                                 document['name'],
                                                 style: const TextStyle(
@@ -530,26 +399,26 @@ class _ItemsGridState extends State<ItemsGrid> {
                                             ),
                                             Padding(
                                               padding:
-                                              const EdgeInsets.fromLTRB(
-                                                  20, 0, 15, 15),
+                                                  const EdgeInsets.fromLTRB(
+                                                      20, 0, 15, 15),
                                               child: Row(
                                                 children: [
                                                   Row(
                                                     children: List.generate(5,
-                                                            (index) {
-                                                          if (index <
-                                                              document["rating"]) {
-                                                            return const Icon(
-                                                              Icons.star,
-                                                              color: Colors.amber,
-                                                            );
-                                                          } else {
-                                                            return const Icon(
-                                                              Icons.star_border,
-                                                              color: Colors.amber,
-                                                            );
-                                                          }
-                                                        }),
+                                                        (index) {
+                                                      if (index <
+                                                          document["rating"]) {
+                                                        return const Icon(
+                                                          Icons.star,
+                                                          color: Colors.amber,
+                                                        );
+                                                      } else {
+                                                        return const Icon(
+                                                          Icons.star_border,
+                                                          color: Colors.amber,
+                                                        );
+                                                      }
+                                                    }),
                                                   ),
                                                   const SizedBox(width: 4),
                                                   Text(
@@ -564,24 +433,19 @@ class _ItemsGridState extends State<ItemsGrid> {
                                             ),
                                           ],
                                         ),
-                                        widget.justBrowsing
-                                            ? const SizedBox()
-                                            : Row(
+                                        Row(
                                           children: [
                                             IconButton(
                                               onPressed: () {
-                                                if (selectedQuantity !=
-                                                    1) {
+                                                if (selectedQuantity != 1) {
                                                   setState(() {
                                                     selectedQuantity--;
                                                   });
                                                 }
                                               },
-                                              icon: const Icon(
-                                                  Icons.remove),
+                                              icon: const Icon(Icons.remove),
                                             ),
-                                            Text(selectedQuantity
-                                                .toString()),
+                                            Text(selectedQuantity.toString()),
                                             IconButton(
                                               onPressed: () {
                                                 setState(() {
@@ -602,7 +466,7 @@ class _ItemsGridState extends State<ItemsGrid> {
                                           Text(
                                             '${document['content']}',
                                             style:
-                                            const TextStyle(fontSize: 16),
+                                                const TextStyle(fontSize: 16),
                                           ),
                                         ],
                                       ),
@@ -612,95 +476,89 @@ class _ItemsGridState extends State<ItemsGrid> {
                                           20, 0, 15, 15),
                                       child: Row(
                                         mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             '${document['price']} \$',
                                             style:
-                                            const TextStyle(fontSize: 20),
+                                                const TextStyle(fontSize: 20),
                                           ),
                                           if (document['orderCount'] > 5)
                                             Text(
                                               "$minutes min $formattedSeconds sec service time",
                                               style:
-                                              const TextStyle(fontSize: 15),
+                                                  const TextStyle(fontSize: 15),
                                             ),
                                         ],
                                       ),
                                     ),
-                                    widget.justBrowsing
-                                        ? const SizedBox()
-                                        : menuButton("Add to Order List",
-                                            () async {
-                                          final usersSnapshot =
-                                          await FirebaseFirestore.instance
-                                              .collection(
+                                    menuButton("Add to Order List", () async {
+                                      final usersSnapshot = await FirebaseFirestore
+                                          .instance
+                                          .collection(
                                               "Restaurants/${widget.id}/Tables")
-                                              .doc(widget.tableNo)
-                                              .get();
-                                          final List<dynamic> users =
+                                          .doc(widget.tableNo)
+                                          .get();
+                                      final List<dynamic> users =
                                           usersSnapshot.data()!['users'];
-                                          if (users.contains(
+                                      if (users.contains(
                                               MenuScreen.getUniqueId()) ||
-                                              users.contains(
-                                                  "${MenuScreen.getUniqueId()}-admin")) {
-                                            final querySnapshot =
-                                            await FirebaseFirestore
-                                                .instance
+                                          users.contains(
+                                              "${MenuScreen.getUniqueId()}-admin")) {
+                                        final querySnapshot =
+                                            await FirebaseFirestore.instance
                                                 .collection(
-                                                "Restaurants/${widget.id}/Tables")
+                                                    "Restaurants/${widget.id}/Tables")
                                                 .doc(widget.tableNo)
                                                 .collection("Orders")
                                                 .where("itemRef",
-                                                isEqualTo: document
-                                                    .reference)
+                                                    isEqualTo:
+                                                        document.reference)
                                                 .get();
-                                            if (querySnapshot.size > 0) {
-                                              // Item already exists in order, update its quantity
-                                              final orderDoc =
-                                                  querySnapshot.docs.first;
-                                              final quantity = orderDoc[
-                                              "quantity_notSubmitted_notServiced"] +
-                                                  selectedQuantity;
-                                              orderDoc.reference.update({
-                                                "quantity_notSubmitted_notServiced":
+                                        if (querySnapshot.size > 0) {
+                                          // Item already exists in order, update its quantity
+                                          final orderDoc =
+                                              querySnapshot.docs.first;
+                                          final quantity = orderDoc[
+                                                  "quantity_notSubmitted_notServiced"] +
+                                              selectedQuantity;
+                                          orderDoc.reference.update({
+                                            "quantity_notSubmitted_notServiced":
                                                 quantity
-                                              });
-                                            } else {
-                                              // Item doesn't exist in order, add it with quantity 1
-                                              FirebaseFirestore.instance
-                                                  .collection(
+                                          });
+                                        } else {
+                                          // Item doesn't exist in order, add it with quantity 1
+                                          FirebaseFirestore.instance
+                                              .collection(
                                                   "Restaurants/${widget.id}/Tables")
-                                                  .doc(widget.tableNo)
-                                                  .collection("Orders")
-                                                  .doc()
-                                                  .set({
-                                                "itemRef": document.reference,
-                                                "quantity_notSubmitted_notServiced":
+                                              .doc(widget.tableNo)
+                                              .collection("Orders")
+                                              .doc()
+                                              .set({
+                                            "itemRef": document.reference,
+                                            "quantity_notSubmitted_notServiced":
                                                 selectedQuantity,
-                                                "quantity_Submitted_notServiced":
-                                                0,
-                                                "quantity_Submitted_Serviced":
-                                                0,
-                                                "orderedTime": 0,
-                                              });
-                                            }
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(SnackBar(
-                                              content: Text(
-                                                  "${document['name']} added to order list, now you can confirm your order!"),
-                                            ));
-                                          } else {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                    "You are not authorized to add items to the order list."),
-                                              ),
-                                            );
-                                          }
-                                          Navigator.of(context).pop();
-                                        }),
+                                            "quantity_Submitted_notServiced": 0,
+                                            "quantity_Submitted_Serviced": 0,
+                                            "orderedTime": 0,
+                                          });
+                                        }
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(SnackBar(
+                                          content: Text(
+                                              "${document['name']} added to order list, now you can confirm your order!"),
+                                        ));
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                                "You are not authorized to add items to the order list."),
+                                          ),
+                                        );
+                                      }
+                                      Navigator.of(context).pop();
+                                    }),
                                   ],
                                 );
                               },
@@ -711,8 +569,8 @@ class _ItemsGridState extends State<ItemsGrid> {
                               future: FirebaseFirestore.instance
                                   .collection('comments')
                                   .where('itemRef',
-                                  isEqualTo: document.reference)
-                                  .orderBy('timestamp',descending: true)
+                                      isEqualTo: document.reference)
+                                  .orderBy('timestamp', descending: true)
                                   .get(),
                               builder: (BuildContext context,
                                   AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -727,12 +585,12 @@ class _ItemsGridState extends State<ItemsGrid> {
 
                                 return ListView(
                                   shrinkWrap:
-                                  true, // uses minimum space of the parent
+                                      true, // uses minimum space of the parent
                                   children: snapshot.data!.docs
                                       .map((DocumentSnapshot commentDoc) {
                                     final timestamp = commentDoc["timestamp"];
                                     final dateTime =
-                                    timestamp.toDate().toLocal();
+                                        timestamp.toDate().toLocal();
                                     final formattedDate =
                                         "${dateTime.day.toString().padLeft(2, '0')}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.year.toString()} ${dateTime.hour.toString().padLeft(2, '0')}.${dateTime.minute.toString().padLeft(2, '0')}";
                                     return Container(
@@ -741,7 +599,7 @@ class _ItemsGridState extends State<ItemsGrid> {
                                       padding: const EdgeInsets.all(16.0),
                                       decoration: BoxDecoration(
                                         borderRadius:
-                                        BorderRadius.circular(12.0),
+                                            BorderRadius.circular(12.0),
                                         color: Colors.white,
                                         boxShadow: [
                                           BoxShadow(
@@ -754,13 +612,13 @@ class _ItemsGridState extends State<ItemsGrid> {
                                       ),
                                       child: Column(
                                         crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
+                                                MainAxisAlignment.spaceBetween,
                                             crossAxisAlignment:
-                                            CrossAxisAlignment.center,
+                                                CrossAxisAlignment.center,
                                             children: [
                                               Expanded(
                                                 child: FutureBuilder<
@@ -771,10 +629,10 @@ class _ItemsGridState extends State<ItemsGrid> {
                                                       .doc(commentDoc['userId'])
                                                       .get(),
                                                   builder: (BuildContext
-                                                  context,
+                                                          context,
                                                       AsyncSnapshot<
-                                                          DocumentSnapshot>
-                                                      snapshot) {
+                                                              DocumentSnapshot>
+                                                          snapshot) {
                                                     if (snapshot.hasError) {
                                                       return const Text('');
                                                     }
@@ -787,12 +645,12 @@ class _ItemsGridState extends State<ItemsGrid> {
                                                     }
 
                                                     final userData = snapshot
-                                                        .data!
-                                                        .data()!
-                                                    as Map<String, dynamic>;
+                                                            .data!
+                                                            .data()!
+                                                        as Map<String, dynamic>;
 
                                                     final imageUrl = userData[
-                                                    'profileImageUrl'] ??
+                                                            'profileImageUrl'] ??
                                                         '';
                                                     final name =
                                                         userData['name'] ?? '';
@@ -802,18 +660,19 @@ class _ItemsGridState extends State<ItemsGrid> {
                                                         CircleAvatar(
                                                             radius: 20,
                                                             backgroundImage: imageUrl !=
-                                                                ""
+                                                                    ""
                                                                 ? NetworkImage(
-                                                                imageUrl)
+                                                                    imageUrl)
                                                                 : const NetworkImage(
-                                                                'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png')),
-                                                        const SizedBox(width: 8),
+                                                                    'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png')),
+                                                        const SizedBox(
+                                                            width: 8),
                                                         Text(
                                                           name,
                                                           style:
-                                                          const TextStyle(
+                                                              const TextStyle(
                                                             fontWeight:
-                                                            FontWeight.bold,
+                                                                FontWeight.bold,
                                                             fontSize: 20.0,
                                                           ),
                                                         ),
@@ -839,12 +698,12 @@ class _ItemsGridState extends State<ItemsGrid> {
                                           Text(
                                             '${commentDoc['text']}',
                                             style:
-                                            const TextStyle(fontSize: 18.0),
+                                                const TextStyle(fontSize: 18.0),
                                           ),
                                           const SizedBox(height: 12.0),
                                           Row(
                                             mainAxisAlignment:
-                                            MainAxisAlignment.end,
+                                                MainAxisAlignment.end,
                                             children: [
                                               Text(
                                                 formattedDate,
@@ -876,7 +735,7 @@ class _ItemsGridState extends State<ItemsGrid> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AspectRatio(
-                    aspectRatio: 1.3,
+                    aspectRatio: 1.2,
                     child: Image.network(
                       document["image_url"],
                       fit: BoxFit.cover,
@@ -904,7 +763,7 @@ class _ItemsGridState extends State<ItemsGrid> {
                         Text(
                           document["rating"].toString(),
                           style:
-                          const TextStyle(fontSize: 16, color: Colors.grey),
+                              const TextStyle(fontSize: 16, color: Colors.grey),
                         ),
                       ],
                     ),
