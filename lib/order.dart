@@ -325,7 +325,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                           ),
                           leading: order['quantity_Submitted_notServiced'] > 0
                               ? const Icon(Icons.timer_outlined)
-                              : null,
+                              : const Icon(Icons.check,color: Colors.green,),
                         ),
                       );
                     },
