@@ -117,14 +117,14 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
       body: TabBarView(
         controller: _tabController,
         children: [
-          notSubmittedOrdersTab(),
-          submittedOrdersTab(),
+          unConfirmedOrdersTab(),
+          confirmedOrdersTab(),
         ],
       ),
     );
   }
 
-  Column notSubmittedOrdersTab() {
+  Column unConfirmedOrdersTab() {
     void deleteAnItem(var order, var orderID) async {
       if (await checkAuthorizedUser()) {
         if (order['quantity_notSubmitted_notServiced'] != 1) {
@@ -166,8 +166,8 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
     return Column(
       children: [
         Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: widget.ordersRef.snapshots(),
+          child: FutureBuilder<QuerySnapshot>(
+            future: widget.ordersRef.get(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -262,7 +262,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
     );
   }
 
-  StreamBuilder<QuerySnapshot> submittedOrdersTab() {
+  StreamBuilder<QuerySnapshot> confirmedOrdersTab() {
     return StreamBuilder<QuerySnapshot>(
       stream: widget.ordersRef.snapshots(),
       builder: (context, snapshot) {
@@ -322,7 +322,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                             "$price\$ x$quantity",
                           ),
                           leading: order['quantity_Submitted_notServiced'] > 0
-                              ? const Icon(Icons.timer_outlined)
+                              ? const Icon(Icons.timer_outlined, color: Colors.orange)
                               : const Icon(Icons.check,color: Colors.green,),
                         ),
                       );
