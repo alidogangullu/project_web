@@ -555,14 +555,14 @@ class PaymentSuccessScreen extends StatelessWidget {
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
+          children: [
             Icon(
               Icons.check_circle,
-              size: 100,
-              color: Colors.green,
+              size: 150,
+              color: Theme.of(context).primaryColor,
             ),
-            SizedBox(height: 20),
-            Text(
+            const SizedBox(height: 20),
+            const Text(
               'Payment Successful',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
