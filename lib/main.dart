@@ -41,17 +41,17 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final Location _location = Location();
-  double desiredLatitude = 0;
-  double desiredLongitude = 0;
+  double? desiredLatitude;
+  double? desiredLongitude;
 
   @override
   void initState() {
     super.initState();
+    _fetchLocationData(widget.id);
   }
 
   static bool isDesiredLocation(LocationData? locationData, double desiredLatitude, double desiredLongitude) {
-    double maxDistanceMeters = 9999999999999;
-
+    double maxDistanceMeters = 99999;
     if (locationData == null) {
       return false;
     }
@@ -71,14 +71,23 @@ class _MyAppState extends State<MyApp> {
         .doc(restaurantId)
         .get();
     if (documentSnapshot.exists) {
-      desiredLatitude = documentSnapshot["location"][0];
-      desiredLongitude = documentSnapshot["location"][1];
+      Map<String, dynamic> data = documentSnapshot.data() as Map<String, dynamic>;
+
+      if (data['position'] != null) {
+        Map<String, dynamic> positionMap = data['position'];
+
+        if (positionMap['geopoint'] != null) {
+          // Get the GeoPoint
+          GeoPoint geoPoint = positionMap['geopoint'];
+          // Print it out or do anything you want with it
+          desiredLatitude = geoPoint.latitude;
+          desiredLongitude = geoPoint.longitude;
+        }
+      }
     }
   }
 
   Future<bool> locationChecker() async {
-    await _fetchLocationData(widget.id);
-
     LocationData? currentLocation;
     bool serviceEnabled = await _location.serviceEnabled();
     if (!serviceEnabled) {
@@ -96,7 +105,7 @@ class _MyAppState extends State<MyApp> {
     }
     currentLocation = await _location.getLocation();
 
-    return isDesiredLocation(currentLocation, desiredLatitude, desiredLongitude);
+    return isDesiredLocation(currentLocation, desiredLatitude!, desiredLongitude!);
   }
 
   final MaterialColor myColor = const MaterialColor(
