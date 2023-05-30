@@ -426,7 +426,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceEvenly,
                                     children: [
-                                      paymentButton(),
+                                      paymentButton(totalAmount),
                                     ],
                                   ),
                                 ],
@@ -450,7 +450,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
     );
   }
 
-  ElevatedButton paymentButton() {
+  ElevatedButton paymentButton(double totalPrice) {
     return ElevatedButton(
       onPressed: () async {
         if (await checkAuthorizedUser()) {
@@ -531,6 +531,25 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                 'newNotification': false,
                 'notifications' : [],
               });
+
+
+              // Get the current date for stats
+              final currentDate = DateTime.now();
+              final currentDay = currentDate.day.toString().padLeft(2, '0');
+              final currentMonth = currentDate.month.toString().padLeft(2, '0');
+              final currentYear = currentDate.year.toString();
+
+              // Add the total price of the order to the total sales for the current day.
+              await restaurantRef!.set({
+                'totalSales': {
+                  currentYear: {
+                    currentMonth: {
+                      currentDay: FieldValue.increment(totalPrice),
+                    },
+                  },
+                },
+              }, SetOptions(merge: true));
+
 
               Navigator.pushReplacement(
                 context,
