@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 class UnauthorizedActionScreen extends StatelessWidget {
-  const UnauthorizedActionScreen({super.key, required this.message});
+  const UnauthorizedActionScreen({super.key, required this.message, this.problem});
   final String message;
+  final String? problem;
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +26,10 @@ class UnauthorizedActionScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(10),
               child: Text(message, textAlign: TextAlign.center,),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Text(problem!, textAlign: TextAlign.center,),
             ),
           ],
         ),

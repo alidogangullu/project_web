@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'dart:html' as html;
@@ -29,103 +30,6 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  List<dynamic> users = [];
-
-  Future<void> listenUnauthorizedUsers() async {
-    await FirebaseFirestore.instance
-        .collection("Restaurants/${widget.id}/Tables")
-        .doc(widget.tableNo)
-        .get()
-        .then((document) async {
-      users = document.data()!['users'];
-
-      bool onlyWaiter = users.length == 1 && users.contains("waiter");
-
-      if (users.isEmpty) {
-        await FirebaseFirestore.instance
-            .collection("Restaurants/${widget.id}/Tables")
-            .doc(widget.tableNo)
-            .update({
-          'newNotification': true,
-          'notifications': FieldValue.arrayUnion(
-              ["A new customer has been seated at Table."]),
-        });
-      }
-
-      bool isAdmin = users.isEmpty ||
-          users.contains("${MenuScreen.getUniqueId()}-admin") ||
-          onlyWaiter; // First accessed user is admin
-
-      if (isAdmin) {
-        String userId = '${MenuScreen.getUniqueId()}${isAdmin ? '-admin' : ''}';
-        await FirebaseFirestore.instance
-            .collection("Restaurants/${widget.id}/Tables")
-            .doc(widget.tableNo)
-            .update({
-          'users': FieldValue.arrayUnion([userId]),
-        });
-      } else if (users.contains(MenuScreen.getUniqueId())) {
-      } else {
-        await FirebaseFirestore.instance
-            .collection("Restaurants/${widget.id}/Tables")
-            .doc(widget.tableNo)
-            .update({
-          'unAuthorizedUsers':
-              FieldValue.arrayUnion([MenuScreen.getUniqueId()]),
-        });
-      }
-
-      if (users.contains("${MenuScreen.getUniqueId()}-admin")) {
-        // Listen for changes to the users array
-        FirebaseFirestore.instance
-            .collection("Restaurants/${widget.id}/Tables")
-            .doc(widget.tableNo)
-            .snapshots()
-            .listen((documentSnapshot) {
-          List<dynamic> unAuthorizedUsers =
-              documentSnapshot.data()!['unAuthorizedUsers'];
-          if (unAuthorizedUsers.isNotEmpty) {
-            // New user joined, display popup dialog to admin
-            for (var user in unAuthorizedUsers) {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: const Text('New User Joined'),
-                    content: Text('Allow user $user to access menu?'),
-                    actions: <Widget>[
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          // Allow user to access menu
-                          Navigator.of(context).pop();
-                          FirebaseFirestore.instance
-                              .collection("Restaurants/${widget.id}/Tables")
-                              .doc(widget.tableNo)
-                              .update({
-                            'users': FieldValue.arrayUnion([user]),
-                            'unAuthorizedUsers': FieldValue.arrayRemove([user]),
-                          });
-                        },
-                        child: const Text('Allow'),
-                      ),
-                    ],
-                  );
-                },
-              );
-            }
-          }
-          setState(() {}); //when new user access,
-          users = documentSnapshot.data()!['users'];
-        });
-      }
-    });
-  }
 
   void _onSearchQueryChanged(String query) {
     setState(() {
@@ -147,12 +51,6 @@ class _MenuScreenState extends State<MenuScreen> {
       allDocuments.addAll(items.docs);
     }
     return allDocuments;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    listenUnauthorizedUsers();
   }
 
   void sendWaiterRequest() async {
@@ -182,6 +80,7 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
       appBar: AppBar(
         actions: [
+          UnauthorizedUsersWidget(id: widget.id, tableNo: widget.tableNo),
           ShoppingCartButton(
               userID: MenuScreen.getUniqueId(),
               tableNo: widget.tableNo,
@@ -294,6 +193,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
             ),
           ),
+          Text("id: ${MenuScreen.getUniqueId().split("-").last}", style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic), textAlign: TextAlign.left,),
         ],
       ),
     );
@@ -308,7 +208,7 @@ class ItemsGrid extends StatefulWidget {
   final String id;
   final String tableNo;
 
-  const ItemsGrid({
+  const ItemsGrid({super.key,
     required this.documents,
     required this.context,
     required this.selected,
@@ -318,10 +218,10 @@ class ItemsGrid extends StatefulWidget {
   });
 
   @override
-  _ItemsGridState createState() => _ItemsGridState();
+  ItemsGridState createState() => ItemsGridState();
 }
 
-class _ItemsGridState extends State<ItemsGrid> {
+class ItemsGridState extends State<ItemsGrid> {
   @override
   Widget build(BuildContext context) {
     return GridView.count(
@@ -575,12 +475,12 @@ class _ItemsGridState extends State<ItemsGrid> {
                               builder: (BuildContext context,
                                   AsyncSnapshot<QuerySnapshot> snapshot) {
                                 if (snapshot.hasError) {
-                                  return Text('Something went wrong');
+                                  return const Text('Something went wrong');
                                 }
 
                                 if (snapshot.connectionState ==
                                     ConnectionState.waiting) {
-                                  return Text("Loading");
+                                  return const Text("Loading");
                                 }
 
                                 return ListView(
@@ -848,6 +748,222 @@ class ShoppingCartButton extends StatelessWidget {
           icon: const Icon(Icons.shopping_cart),
         );
       },
+    );
+  }
+}
+
+class UnauthorizedUsersWidget extends StatefulWidget {
+  final String id;
+  final String tableNo;
+
+  const UnauthorizedUsersWidget(
+      {super.key, required this.id, required this.tableNo});
+
+  @override
+  UnauthorizedUsersWidgetState createState() => UnauthorizedUsersWidgetState();
+}
+
+class UnauthorizedUsersWidgetState extends State<UnauthorizedUsersWidget> {
+  List<dynamic> users = [];
+  List<dynamic> unAuthorizedUsers = [];
+  bool isAdmin = false;
+
+  late StreamSubscription unAuthorizedUsersStream;
+
+  @override
+  void initState() {
+    super.initState();
+    listenUnauthorizedUsers();
+  }
+
+  @override
+  void dispose() {
+    unAuthorizedUsersStream.cancel();
+    super.dispose();
+  }
+
+  Future<void> listenUnauthorizedUsers() async {
+    await FirebaseFirestore.instance
+        .collection("Restaurants/${widget.id}/Tables")
+        .doc(widget.tableNo)
+        .get()
+        .then((document) async {
+      users = document.data()!['users'];
+
+      bool onlyWaiter = users.length == 1 && users.contains("waiter");
+
+      if (users.isEmpty) {
+        await FirebaseFirestore.instance
+            .collection("Restaurants/${widget.id}/Tables")
+            .doc(widget.tableNo)
+            .update({
+          'newNotification': true,
+          'notifications': FieldValue.arrayUnion(
+              ["A new customer has been seated at Table."]),
+        });
+      }
+
+      setState(() {
+        isAdmin = users.isEmpty ||
+            users.contains("${MenuScreen.getUniqueId()}-admin") ||
+            onlyWaiter; // First accessed user is admin
+      });
+
+      if (isAdmin) {
+        String userId = '${MenuScreen.getUniqueId()}${isAdmin ? '-admin' : ''}';
+        await FirebaseFirestore.instance
+            .collection("Restaurants/${widget.id}/Tables")
+            .doc(widget.tableNo)
+            .update({
+          'users': FieldValue.arrayUnion([userId]),
+        });
+      } else if (users.contains(MenuScreen.getUniqueId())) {
+      } else {
+        await FirebaseFirestore.instance
+            .collection("Restaurants/${widget.id}/Tables")
+            .doc(widget.tableNo)
+            .update({
+          'unAuthorizedUsers':
+              FieldValue.arrayUnion([MenuScreen.getUniqueId()]),
+        });
+      }
+
+      if (users.contains("${MenuScreen.getUniqueId()}-admin")) {
+        // Listen for changes to the users array
+        unAuthorizedUsersStream = FirebaseFirestore.instance
+            .collection("Restaurants/${widget.id}/Tables")
+            .doc(widget.tableNo)
+            .snapshots()
+            .listen((documentSnapshot) {
+          setState(() {
+            unAuthorizedUsers = documentSnapshot.data()!['unAuthorizedUsers'];
+            users = documentSnapshot.data()!['users'];
+          });
+        });
+      }
+    });
+  }
+
+  Future<String> getUsername(String userID) async {
+    String username = 'error';
+    DocumentSnapshot documentSnapshot =
+    await FirebaseFirestore.instance.collection('users').doc(userID).get();
+    if (documentSnapshot.exists) {
+      username = documentSnapshot['name'];
+    } else if(userID.contains("web")) {
+      return "${userID.split("-").last} from web";
+    }
+    return username;
+  }
+
+  void showDialogsForUnauthorizedUsers(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('New Users Joined'),
+          content: SizedBox(
+            width: double.minPositive,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: unAuthorizedUsers.length,
+              itemBuilder: (context, index) {
+                var user = unAuthorizedUsers[index];
+                return ListTile(
+                  title: FutureBuilder<String>(
+                    future: getUsername(user),
+                    builder:
+                        (BuildContext context, AsyncSnapshot<String> snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Text("Loading...");
+                      } else if (snapshot.data == "error") {
+                        return const Text("No Name");
+                      } else {
+                        return Text(snapshot.data.toString());
+                      }
+                    },
+                  ),
+                  trailing: TextButton(
+                    onPressed: () {
+                      FirebaseFirestore.instance
+                          .collection("Restaurants/${widget.id}/Tables")
+                          .doc(widget.tableNo)
+                          .update({
+                        'users': FieldValue.arrayUnion([user]),
+                        'unAuthorizedUsers': FieldValue.arrayRemove([user]),
+                      }).then((value) => unAuthorizedUsers.removeAt(index));
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('Allow'),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close'),
+            ),
+            TextButton(
+              onPressed: () {
+                FirebaseFirestore.instance
+                    .collection("Restaurants/${widget.id}/Tables")
+                    .doc(widget.tableNo)
+                    .update({
+                  'users': FieldValue.arrayUnion(unAuthorizedUsers),
+                  'unAuthorizedUsers':
+                      FieldValue.arrayRemove(unAuthorizedUsers),
+                }).then((value) => unAuthorizedUsers.clear());
+                Navigator.of(context).pop();
+              },
+              child: const Text('Allow All'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Stack(
+        children: <Widget>[
+          if (isAdmin)
+            IconButton(
+              icon: const Icon(Icons.person),
+              onPressed: () {
+                showDialogsForUnauthorizedUsers(context);
+              },
+            ),
+          if (unAuthorizedUsers.isNotEmpty && isAdmin)
+            Positioned(
+              right: 5,
+              top: 5,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 15,
+                  minHeight: 15,
+                ),
+                child: Text(
+                  '${unAuthorizedUsers.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

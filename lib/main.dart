@@ -23,8 +23,8 @@ Future<void> main() async {
     ));
   } else {
     //error case, also for testing
-    runApp(MyApp(
-      id: "GixzDeIROMDRAn2mAnMG",
+    runApp(const MyApp(
+      id: "tCGe0KgMzjUZzqoCM2rw",
       tableNo: "1",
     ));
   }
@@ -36,13 +36,29 @@ class MyApp extends StatefulWidget {
   final String id, tableNo;
 
   @override
-  _MyAppState createState() => _MyAppState();
+  MyAppState createState() => MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class MyAppState extends State<MyApp> {
   final Location _location = Location();
   double? desiredLatitude;
   double? desiredLongitude;
+
+  final MaterialColor myColor = const MaterialColor(
+    0xFF008C8C,
+    <int, Color>{
+      50: Color(0xFFE0F2F2),
+      100: Color(0xFFB3CCCC),
+      200: Color(0xFF80B2B2),
+      300: Color(0xFF4D9999),
+      400: Color(0xFF267F7F),
+      500: Color(0xFF008C8C),
+      600: Color(0xFF007474),
+      700: Color(0xFF006060),
+      800: Color(0xFF004C4C),
+      900: Color(0xFF003838),
+    },
+  );
 
   @override
   void initState() {
@@ -50,7 +66,8 @@ class _MyAppState extends State<MyApp> {
     _fetchLocationData(widget.id);
   }
 
-  static bool isDesiredLocation(LocationData? locationData, double desiredLatitude, double desiredLongitude) {
+  static bool isDesiredLocation(LocationData? locationData,
+      double desiredLatitude, double desiredLongitude) {
     double maxDistanceMeters = 99999;
     if (locationData == null) {
       return false;
@@ -71,7 +88,8 @@ class _MyAppState extends State<MyApp> {
         .doc(restaurantId)
         .get();
     if (documentSnapshot.exists) {
-      Map<String, dynamic> data = documentSnapshot.data() as Map<String, dynamic>;
+      Map<String, dynamic> data =
+          documentSnapshot.data() as Map<String, dynamic>;
 
       if (data['position'] != null) {
         Map<String, dynamic> positionMap = data['position'];
@@ -93,36 +111,26 @@ class _MyAppState extends State<MyApp> {
     if (!serviceEnabled) {
       serviceEnabled = await _location.requestService();
       if (!serviceEnabled) {
-        return false;
+        return Future.error('Location service is not enabled');
       }
     }
     PermissionStatus permissionGranted = await _location.hasPermission();
     if (permissionGranted == PermissionStatus.denied) {
       permissionGranted = await _location.requestPermission();
       if (permissionGranted != PermissionStatus.granted) {
-        return false;
+        return Future.error('Location permission not granted');
       }
     }
     currentLocation = await _location.getLocation();
-
-    return isDesiredLocation(currentLocation, desiredLatitude!, desiredLongitude!);
+    if (desiredLongitude == null || desiredLatitude == null) {
+      await _fetchLocationData(widget.id);
+    }
+    bool isInDesiredLocation = isDesiredLocation(currentLocation, desiredLatitude!, desiredLongitude!);
+    if (!isInDesiredLocation) {
+      return Future.error('Not in the desired location');
+    }
+    return Future.value(true);
   }
-
-  final MaterialColor myColor = const MaterialColor(
-    0xFF008C8C,
-    <int, Color>{
-      50: Color(0xFFE0F2F2),
-      100: Color(0xFFB3CCCC),
-      200: Color(0xFF80B2B2),
-      300: Color(0xFF4D9999),
-      400: Color(0xFF267F7F),
-      500: Color(0xFF008C8C),
-      600: Color(0xFF007474),
-      700: Color(0xFF006060),
-      800: Color(0xFF004C4C),
-      900: Color(0xFF003838),
-    },
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -130,28 +138,29 @@ class _MyAppState extends State<MyApp> {
       future: locationChecker(),
       builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
-          if (snapshot.data == true) {
+          if (snapshot.hasError) {
+            String problem = snapshot.error.toString();
             return MaterialApp(
-              debugShowCheckedModeBanner: false,
-              theme: ThemeData(
-                primarySwatch: myColor,
-              ),
-              home: MenuScreen(
-                id: widget.id,
-                tableNo: widget.tableNo,
-              ),
-            );
-          } else {
-            return MaterialApp(
-              debugShowCheckedModeBanner: false,
-              theme: ThemeData(
-                primarySwatch: myColor,
-              ),
-              home: const UnauthorizedActionScreen(
-                message: "You have to be at the restaurant to access the menu or you have to give location permission!",
-              )
+                debugShowCheckedModeBanner: false,
+                theme: ThemeData(
+                  primarySwatch: myColor,
+                ),
+                home: UnauthorizedActionScreen(
+                  message: "An error occurred!",
+                  problem: problem,
+                )
             );
           }
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              primarySwatch: myColor,
+            ),
+            home: MenuScreen(
+              id: widget.id,
+              tableNo: widget.tableNo,
+            ),
+          );
         }
         return const Center(child: CircularProgressIndicator(color: Color(0xFF008C8C),),);
       },
