@@ -372,6 +372,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                   onPressed: () async {
                     if (await checkAuthorizedUser()) {
                       var submittedOrdersLength = submittedOrders.length;
+                      // ignore: use_build_context_synchronously
                       showModalBottomSheet(
                         shape: const RoundedRectangleBorder(
                             borderRadius: BorderRadius.only(
@@ -487,6 +488,7 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
 
           // Get the list of user IDs from the table.
           final tableSnapshot = await widget.tableRef.get();
+          final restaurantRef = widget.tableRef.parent.parent;
           final userIds = List<String>.from(tableSnapshot.get('users'));
 
           if (userIds.isEmpty) {
@@ -502,7 +504,6 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
             for (final userID in userIds) {
               // Get a reference to the orders collection for this table.
               final tableOrdersRef = widget.tableRef.collection('Orders');
-              final restaurantRef = widget.tableRef.parent.parent;
 
               // Loop through the orders for this table and transfer them to the user's orders collection.
               final tableOrdersSnapshot = await tableOrdersRef.get();
@@ -551,39 +552,39 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                       .delete(); // Delete from table orders
                 }
               }
+            }
 
-              //reset table users after transferring order data
-              await widget.tableRef.update({
-                'users': [],
-                'newNotification': false,
-                'notifications' : [],
-              });
+            //reset table users after transferring order data
+            await widget.tableRef.update({
+              'users': [],
+              'newNotification': false,
+              'notifications' : [],
+            });
 
 
-              // Get the current date for stats
-              final currentDate = DateTime.now();
-              final currentDay = currentDate.day.toString().padLeft(2, '0');
-              final currentMonth = currentDate.month.toString().padLeft(2, '0');
-              final currentYear = currentDate.year.toString();
+            // Get the current date for stats
+            final currentDate = DateTime.now();
+            final currentDay = currentDate.day.toString().padLeft(2, '0');
+            final currentMonth = currentDate.month.toString().padLeft(2, '0');
+            final currentYear = currentDate.year.toString();
 
-              // Add the total price of the order to the total sales for the current day.
-              await restaurantRef!.set({
-                'totalSales': {
-                  currentYear: {
-                    currentMonth: {
-                      currentDay: FieldValue.increment(totalPrice),
-                    },
+            // Add the total price of the order to the total sales for the current day.
+            await restaurantRef!.set({
+              'totalSales': {
+                currentYear: {
+                  currentMonth: {
+                    currentDay: FieldValue.increment(totalPrice),
                   },
                 },
-              }, SetOptions(merge: true));
+              },
+            }, SetOptions(merge: true));
 
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const PaymentSuccessScreen()),
+            );
 
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const PaymentSuccessScreen()),
-              );
-            }
           }
         }
       },
