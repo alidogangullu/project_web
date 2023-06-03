@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:project_web/customWidgets.dart';
 import 'package:project_web/restaurantMenu.dart';
 import 'package:project_web/unauthorizedAction.dart';
 import 'package:slide_action/slide_action.dart';
@@ -136,10 +137,8 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
           });
           setState(() {});
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
-                "Last item! Use delete button to delete this item from order list."),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(customSnackBar(
+              "Last item! Use delete button to delete this item from order list."));
         }
       }
     }
