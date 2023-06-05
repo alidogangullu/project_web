@@ -135,7 +135,8 @@ class MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<bool>(
-      future: locationChecker(),
+      //future: locationChecker(),
+      future: Future.value(true),
       builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
           if (snapshot.hasError) {

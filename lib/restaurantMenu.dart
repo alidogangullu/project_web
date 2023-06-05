@@ -223,7 +223,7 @@ class ItemsGridState extends State<ItemsGrid> {
   @override
   Widget build(BuildContext context) {
     return GridView.count(
-      crossAxisCount: 4,
+      crossAxisCount: 2,
       childAspectRatio: 0.70,
       children: widget.documents.map((document) {
         return GestureDetector(
@@ -796,12 +796,13 @@ class UnauthorizedUsersWidgetState extends State<UnauthorizedUsersWidget> {
       }
 
       setState(() {
-        isAdmin = users.isEmpty ||
+        isAdmin =
+            //users.isEmpty || locked because of web security reasons
             users.contains("${MenuScreen.getUniqueId()}-admin") ||
             onlyWaiter; // First accessed user is admin
       });
 
-      if (isAdmin) {
+      if (isAdmin && false) { //locked because of web security reasons
         String userId = '${MenuScreen.getUniqueId()}${isAdmin ? '-admin' : ''}';
         await FirebaseFirestore.instance
             .collection("Restaurants/${widget.id}/Tables")
@@ -809,7 +810,7 @@ class UnauthorizedUsersWidgetState extends State<UnauthorizedUsersWidget> {
             .update({
           'users': FieldValue.arrayUnion([userId]),
         });
-      } else if (users.contains(MenuScreen.getUniqueId())) {
+      } else if (users.contains("${MenuScreen.getUniqueId()}-admin") || users.contains(MenuScreen.getUniqueId())) {
       } else {
         await FirebaseFirestore.instance
             .collection("Restaurants/${widget.id}/Tables")
