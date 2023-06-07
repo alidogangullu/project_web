@@ -1,9 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:project_web/customWidgets.dart';
 import 'package:project_web/restaurantMenu.dart';
 import 'package:project_web/unauthorizedAction.dart';
 import 'package:slide_action/slide_action.dart';
+import 'package:flutter_stripe/flutter_stripe.dart' as st;
+import '../bloc/blocs.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage(
@@ -24,6 +27,7 @@ class OrdersPage extends StatefulWidget {
 
 class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
   late TabController _tabController;
+  st.CardEditController controller = st.CardEditController();
 
   Future<bool> checkAuthorizedUser() async {
     final usersSnapshot = await FirebaseFirestore.instance
@@ -363,103 +367,282 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
                 width: double.infinity,
                 height: 70,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(52),
-                    ),
-                  ),
                   onPressed: () async {
+                    String option = "";
                     if (await checkAuthorizedUser()) {
                       var submittedOrdersLength = submittedOrders.length;
                       // ignore: use_build_context_synchronously
                       showModalBottomSheet(
-                        shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(52),
-                          topRight: Radius.circular(52),
-                        )),
                         context: context,
+                        isScrollControlled: true,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
+                          ),
+                        ),
                         builder: (BuildContext context) {
-                          return SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.8,
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Summary',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Expanded(
-                                    child: ListView.builder(
-                                      itemCount: submittedOrdersLength,
-                                      itemBuilder: (context, index) {
-                                        final order = submittedOrders[index];
-                                        return FutureBuilder<DocumentSnapshot>(
-                                          future: (order['itemRef']
+                          return DraggableScrollableSheet(
+                              expand: false,
+                              initialChildSize: 0.6,
+                              minChildSize: 0.4,
+                              maxChildSize: 1,
+                              builder:
+                                  (BuildContext context, myscrollController) {
+                                return SingleChildScrollView(
+                                  controller: myscrollController,
+                                  child: StatefulBuilder(builder:
+                                      (BuildContext context,
+                                      StateSetter setState) {
+                                    return Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                          24, 24, 24, 8),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                        mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                        children: [
+                                          const Text(
+                                            'Summary',
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            height: 200,
+                                            child: ListView.builder(
+                                              itemCount: submittedOrdersLength,
+                                              itemBuilder: (context, index) {
+                                                final order =
+                                                submittedOrders[index];
+                                                return FutureBuilder<
+                                                    DocumentSnapshot>(
+                                                  future: (order['itemRef']
                                                   as DocumentReference)
-                                              .get(),
-                                          builder: (context, snapshot) {
-                                            if (!snapshot.hasData) {
-                                              return const SizedBox();
-                                            }
-                                            final name = snapshot.data!
-                                                .get('name') as String;
-                                            final price =
-                                                snapshot.data!.get('price');
-                                            final quantity = order[
+                                                      .get(),
+                                                  builder: (context, snapshot) {
+                                                    if (!snapshot.hasData) {
+                                                      return const Center(
+                                                        child:
+                                                        CircularProgressIndicator(),
+                                                      );
+                                                    }
+                                                    final name = snapshot.data!
+                                                        .get('name') as String;
+                                                    final price = snapshot.data!
+                                                        .get('price');
+                                                    final quantity = order[
                                                     'quantity_Submitted_notServiced'] +
-                                                order[
-                                                    'quantity_Submitted_Serviced'];
-                                            return ListTile(
-                                              title: Text(name),
-                                              subtitle: Text('x $quantity'),
-                                              trailing: Text(
-                                                  '${(price).toStringAsFixed(2)}\$'),
-                                            );
-                                          },
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  const Divider(),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        'Total',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                                        order[
+                                                        'quantity_Submitted_Serviced'];
+                                                    return ListTile(
+                                                      title: Text(name),
+                                                      subtitle:
+                                                      Text('x $quantity'),
+                                                      trailing: Text(
+                                                          '${(price).toStringAsFixed(2)}\$'),
+                                                    );
+                                                  },
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                          const Divider(),
+                                          Row(
+                                            mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              const Text(
+                                                'Total',
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Text(
+                                                '${totalAmount.toStringAsFixed(2)}\$',
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 16),
+                                          if (option == "")
+                                            Row(
+                                              mainAxisAlignment:
+                                              MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                paymentOption(
+                                                    'card', totalAmount, () {
+                                                  setState(() {
+                                                    option = "card";
+                                                  });
+                                                }),
+                                                /*
+                                                const SizedBox(width: 8),
+                                                paymentOption(
+                                                    'paypal', totalAmount, () {
+                                                  setState(() {
+                                                    option = "paypal";
+                                                  });
+                                                }),
+                                                 */
+                                                const SizedBox(width: 8),
+                                                paymentOption(
+                                                    'waiter', totalAmount, () async {
+                                                  if (await checkAuthorizedUser()) {
+                                                  await widget.tableRef
+                                                      .update({
+                                                    'newNotification': true,
+                                                    'notifications':
+                                                    FieldValue.arrayUnion(["A waiter request has been sent for payment."]),
+                                                  });
+                                                  setState(() {
+                                                    option = "waiter";
+                                                  });
+                                                  }
+                                                }),
+                                              ],
+                                            ),
+                                          const SizedBox(height: 16),
+                                          if (option == "")
+                                            const Text("Select any payment method!"),
+                                          if (option == "card")
+                                            BlocBuilder<PaymentBloc,
+                                                PaymentState>(
+                                                builder: (BuildContext context,
+                                                    state) {
+                                                  if (state.status ==
+                                                      PaymentStatus.initial) {
+                                                    return Column(
+                                                      children: [
+                                                        st.CardField(
+                                                          controller: controller,
+                                                        ),
+                                                        const SizedBox(height: 16),
+                                                        menuButton("Pay", () async {
+                                                          (controller
+                                                              .details.complete)
+                                                              ? context
+                                                              .read<
+                                                              PaymentBloc>()
+                                                              .add(
+                                                            PaymentCreateIntent(
+                                                              billingDetails:
+                                                              st.BillingDetails(
+                                                                name: MenuScreen.getUniqueId(),
+                                                              ),
+                                                              amount:
+                                                              totalAmount,
+                                                            ),
+                                                          )
+                                                              : ScaffoldMessenger
+                                                              .of(context)
+                                                              .showSnackBar(
+                                                              customSnackBar(
+                                                                  "The form is not complete."));
+                                                        }),
+                                                      ],
+                                                    );
+                                                  } else if (state.status ==
+                                                      PaymentStatus.success) {
+                                                    resetTable(totalAmount);
+                                                    context
+                                                        .read<PaymentBloc>()
+                                                        .add(PaymentStart());
+                                                    Future.delayed(Duration.zero,
+                                                            () {
+                                                          Navigator.pushReplacement(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                                builder: (context) =>
+                                                                const PaymentSuccessScreen()),
+                                                          );
+                                                        });
+                                                  } else if (state.status ==
+                                                      PaymentStatus.loading) {
+                                                    return const Center(
+                                                      child:
+                                                      CircularProgressIndicator(),
+                                                    );
+                                                  }
+                                                  return const Text(
+                                                      "Navigating...");
+                                                }),
+                                          /*
+                                          if (option == "paypal")
+                                            Container(
+                                              color: Colors.blueGrey,
+                                              width: double.infinity,
+                                              height: 500,
+                                              child: PaypalCheckout(
+                                                sandboxMode: true,
+                                                clientId: "",
+                                                secretKey: "",
+                                                returnURL: "",
+                                                cancelURL: "",
+                                                transactions: [
+                                                  {
+                                                    "amount": {
+                                                      "total": totalAmount,
+                                                      "currency": "USD",
+                                                      "details": {
+                                                        "subtotal": totalAmount,
+                                                        "shipping": '0',
+                                                        "shipping_discount": 0
+                                                      }
+                                                    },
+                                                    "description":
+                                                        "The payment transaction description.",
+                                                    "item_list": {
+                                                      "items": [
+                                                        {
+                                                          "name": "food",
+                                                          "quantity": 1,
+                                                          "price": totalAmount,
+                                                          "currency": "USD"
+                                                        },
+                                                      ],
+                                                    }
+                                                  }
+                                                ],
+                                                note: "PAYMENT_NOTE",
+                                                onSuccess: (Map params) async {
+                                                  print("onSuccess: $params");
+                                                  resetTable(totalAmount);
+                                                  Future.delayed(Duration.zero,
+                                                          () {
+                                                        Navigator.pushReplacement(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                              builder: (context) =>
+                                                              const PaymentSuccessScreen()),
+                                                        );
+                                                      });
+                                                },
+                                                onError: (error) {
+                                                  print("onError: $error");
+                                                },
+                                                onCancel: () {
+                                                  print('cancelled:');
+                                                },
+                                              ),
+                                            ),
+                                           */
+                                          if(option == "waiter")
+                                            const Text("A waiter request has been sent for payment!"),
+                                        ],
                                       ),
-                                      Text(
-                                        '${totalAmount.toStringAsFixed(2)}\$',
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      paymentButton(totalAmount),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
+                                    );
+                                  }),
+                                );
+                              });
                         },
                       );
                     }
@@ -477,117 +660,117 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
     );
   }
 
-  ElevatedButton paymentButton(double totalPrice) {
-    return ElevatedButton(
-      onPressed: () async {
-        if (await checkAuthorizedUser()) {
-          // TODO: Implement payment functionality, now its just for testing.
+  Future<void> resetTable(totalPrice) async {
+    if (await checkAuthorizedUser()) {
+      final usersRef = FirebaseFirestore.instance.collection('users');
 
-          final usersRef = FirebaseFirestore.instance.collection('users');
+      // Get the list of user IDs from the table.
+      final tableSnapshot = await widget.tableRef.get();
+      final restaurantRef = widget.tableRef.parent.parent;
+      final userIds = List<String>.from(tableSnapshot.get('users'));
 
-          // Get the list of user IDs from the table.
-          final tableSnapshot = await widget.tableRef.get();
-          final restaurantRef = widget.tableRef.parent.parent;
-          final userIds = List<String>.from(tableSnapshot.get('users'));
+      if (userIds.isEmpty) {
+        final tableOrdersRef = widget.tableRef.collection('Orders');
+        final tableOrdersSnapshot = await tableOrdersRef.get();
 
-          if (userIds.isEmpty) {
-            final tableOrdersRef = widget.tableRef.collection('Orders');
-            final tableOrdersSnapshot = await tableOrdersRef.get();
+        for (final orderSnapshot in tableOrdersSnapshot.docs) {
+          await tableOrdersRef
+              .doc(orderSnapshot.id)
+              .delete(); // Delete from table orders
+        }
+      } else {
+        for (final userID in userIds) {
+          // Get a reference to the orders collection for this table.
+          final tableOrdersRef = widget.tableRef.collection('Orders');
+
+          // Loop through the orders for this table and transfer them to the user's orders collection.
+          final tableOrdersSnapshot = await tableOrdersRef.get();
+
+          String completedOrderId = "web+${DateTime.now()}";
+
+          //split "-" because of -admin
+          String userId = userID.split("-").first;
+
+          if (!userId.contains("web")  && !userId.contains("waiter")) {
+            //registered userid add to completed orders then delete order
+            await usersRef
+                .doc(userId)
+                .collection('completedOrders')
+                .doc(completedOrderId)
+                .set({
+              'restaurantRef': restaurantRef,
+              'timestamp': Timestamp.now(),
+              'items': [],
+              'totalPrice': totalPrice,
+            });
 
             for (final orderSnapshot in tableOrdersSnapshot.docs) {
+              final orderData = orderSnapshot.data();
+              final submittedServiced =
+              orderData['quantity_Submitted_Serviced'] as int;
+              final submittedNotServiced =
+              orderData['quantity_Submitted_notServiced'] as int;
+              if (submittedServiced > 0 || submittedNotServiced > 0) {
+                await usersRef
+                    .doc(userId)
+                    .collection('completedOrders')
+                    .doc(completedOrderId)
+                    .update({
+                  'items': FieldValue.arrayUnion([orderData])
+                });
+              }
               await tableOrdersRef
                   .doc(orderSnapshot.id)
                   .delete(); // Delete from table orders
             }
           } else {
-            for (final userID in userIds) {
-              // Get a reference to the orders collection for this table.
-              final tableOrdersRef = widget.tableRef.collection('Orders');
-
-              // Loop through the orders for this table and transfer them to the user's orders collection.
-              final tableOrdersSnapshot = await tableOrdersRef.get();
-
-              String completedOrderId = "web+${DateTime.now()}";
-
-              //split "-" because of -admin
-              String userId = userID.split("-").first;
-
-              if (!userId.contains("web")  && !userId.contains("waiter")) {
-                //registered userid add to completed orders then delete order
-                await usersRef
-                    .doc(userId)
-                    .collection('completedOrders')
-                    .doc(completedOrderId)
-                    .set({
-                  'restaurantRef': restaurantRef,
-                  'timestamp': Timestamp.now(),
-                  'items': []
-                });
-
-                for (final orderSnapshot in tableOrdersSnapshot.docs) {
-                  final orderData = orderSnapshot.data();
-                  final submittedServiced =
-                      orderData['quantity_Submitted_Serviced'] as int;
-                  final submittedNotServiced =
-                      orderData['quantity_Submitted_notServiced'] as int;
-                  if (submittedServiced > 0 || submittedNotServiced > 0) {
-                    await usersRef
-                        .doc(userId)
-                        .collection('completedOrders')
-                        .doc(completedOrderId)
-                        .update({
-                      'items': FieldValue.arrayUnion([orderData])
-                    });
-                  }
-                  await tableOrdersRef
-                      .doc(orderSnapshot.id)
-                      .delete(); // Delete from table orders
-                }
-              } else {
-                //unregistered userid just delete order
-                for (final orderSnapshot in tableOrdersSnapshot.docs) {
-                  await tableOrdersRef
-                      .doc(orderSnapshot.id)
-                      .delete(); // Delete from table orders
-                }
-              }
+            //unregistered userid just delete order
+            for (final orderSnapshot in tableOrdersSnapshot.docs) {
+              await tableOrdersRef
+                  .doc(orderSnapshot.id)
+                  .delete(); // Delete from table orders
             }
-
-            //reset table users after transferring order data
-            await widget.tableRef.update({
-              'users': [],
-              'newNotification': false,
-              'notifications' : [],
-            });
-
-
-            // Get the current date for stats
-            final currentDate = DateTime.now();
-            final currentDay = currentDate.day.toString().padLeft(2, '0');
-            final currentMonth = currentDate.month.toString().padLeft(2, '0');
-            final currentYear = currentDate.year.toString();
-
-            // Add the total price of the order to the total sales for the current day.
-            await restaurantRef!.set({
-              'totalSales': {
-                currentYear: {
-                  currentMonth: {
-                    currentDay: FieldValue.increment(totalPrice),
-                  },
-                },
-              },
-            }, SetOptions(merge: true));
-
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const PaymentSuccessScreen()),
-            );
-
           }
         }
-      },
-      child: const Text("Pay with ..."),
+
+        //reset table users after transferring order data
+        await widget.tableRef.update({
+          'users': [],
+          'unAuthorizedUsers': [],
+          'newNotification': false,
+          'notifications' : [],
+        });
+
+        // Get the current date for stats
+        final currentDate = DateTime.now();
+        final currentDay = currentDate.day.toString().padLeft(2, '0');
+        final currentMonth = currentDate.month.toString().padLeft(2, '0');
+        final currentYear = currentDate.year.toString();
+
+        // Add the total price of the order to the total sales for the current day.
+        await restaurantRef!.set({
+          'totalSales': {
+            currentYear: {
+              currentMonth: {
+                currentDay: FieldValue.increment(totalPrice),
+              },
+            },
+          },
+        }, SetOptions(merge: true));
+      }
+    }
+  }
+
+  Expanded paymentOption(
+      String option, double totalPrice, void Function() pay) {
+    return Expanded(
+      child: ElevatedButton(
+        onPressed: () {
+          pay();
+          //resetTable(totalPrice);
+        },
+        child: Text("Pay with $option"),
+      ),
     );
   }
 }

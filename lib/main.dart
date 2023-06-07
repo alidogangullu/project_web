@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:location/location.dart';
 import 'package:project_web/restaurantMenu.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:project_web/unauthorizedAction.dart';
+import 'bloc/payment/payment_bloc.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -13,6 +16,8 @@ Future<void> main() async {
   //örnek url https://restaurantapp-2a43d.web.app/?id=qVu4d36x4BY9opVCDbtr&tableNo=1
   String? id = Uri.base.queryParameters["id"];
   String? tableNo = Uri.base.queryParameters["tableNo"];
+  Stripe.publishableKey = "pk_test_51NDyAVBYVNCxrHdPJ2HgeONRg6K5501stWtRJj19FHgjG42tcIOsVWGVmDjatnDUNTP7fkU4YFrXk510rk7yIUHa00k1SXrRN6";
+  await Stripe.instance.applySettings();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -152,14 +157,17 @@ class MyAppState extends State<MyApp> {
                 )
             );
           }
-          return MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              primarySwatch: myColor,
-            ),
-            home: MenuScreen(
-              id: widget.id,
-              tableNo: widget.tableNo,
+          return BlocProvider(
+            create: (context) => PaymentBloc(),
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: ThemeData(
+                primarySwatch: myColor,
+              ),
+              home: MenuScreen(
+                id: widget.id,
+                tableNo: widget.tableNo,
+              ),
             ),
           );
         }
