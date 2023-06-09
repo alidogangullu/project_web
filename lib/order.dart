@@ -90,6 +90,13 @@ class _OrdersState extends State<OrdersPage> with TickerProviderStateMixin {
           'quantity_Submitted_notServiced': newQuantity,
           'newNotification': true
         });
+
+        await widget.tableRef.update({
+          'newNotification': true,
+          'notifications': FieldValue.arrayUnion([
+            "New order: ${toSubmitQuantity}x ${order['itemRef'].toString().split("/").last.split(")").first}"
+          ]),
+        });
       }
 
       setState(() {
