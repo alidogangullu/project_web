@@ -13,7 +13,7 @@ import 'firebase_options.dart';
 Future<void> main() async {
   //String url = Uri.base.toString(); //url yi çekmek için
   //qr koddan gelen url path formatı = /?id="restaurantID"&tableNo="tableNo"
-  //örnek url https://restaurantapp-2a43d.web.app/?id=qVu4d36x4BY9opVCDbtr&tableNo=1
+  //örnek url https://restaurantapp-2a43d.web.app/?id="restourantId"&tableNo="tableNo"
   String? id = Uri.base.queryParameters["id"];
   String? tableNo = Uri.base.queryParameters["tableNo"];
   Stripe.publishableKey = "pk_test_51NDyAVBYVNCxrHdPJ2HgeONRg6K5501stWtRJj19FHgjG42tcIOsVWGVmDjatnDUNTP7fkU4YFrXk510rk7yIUHa00k1SXrRN6";
@@ -140,8 +140,8 @@ class MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<bool>(
-      //future: locationChecker(),
-      future: Future.value(true),
+      future: locationChecker(),
+      //future: Future.value(true),
       builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
           if (snapshot.hasError) {

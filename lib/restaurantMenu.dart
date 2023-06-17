@@ -802,8 +802,8 @@ class UnauthorizedUsersWidgetState extends State<UnauthorizedUsersWidget> {
       setState(() {
         isAdmin =
             //users.isEmpty || locked because of web security reasons
-            users.contains("${MenuScreen.getUniqueId()}-admin") ||
-            onlyWaiter; // First accessed user is admin
+            users.contains("${MenuScreen.getUniqueId()}-admin");
+                //|| onlyWaiter; //locked because of web security reasons
       });
 
       if (isAdmin && false) { //locked because of web security reasons
